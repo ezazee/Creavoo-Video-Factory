@@ -243,7 +243,7 @@ export default function SchedulePage() {
   const runNow = async () => {
     setRunning(true); setRunLog(null);
     try {
-      const res = await fetch("/api/schedule/tick");
+      const res = await fetch("/api/schedule/run");
       const d = await res.json();
       setRunLog(d.log ?? [d.skipped ?? d.error ?? "done"]);
       if (d.runId) {
@@ -258,7 +258,7 @@ export default function SchedulePage() {
   const testPipeline = async () => {
     setTesting(true); setRunLog(null);
     try {
-      const res = await fetch("/api/schedule/tick?force=true&dryrun=true");
+      const res = await fetch("/api/schedule/run?force=true&dryrun=true");
       const d = await res.json();
       setRunLog(d.log ?? [d.error ?? "done"]);
     } catch (e) { setRunLog([String(e)]); }
