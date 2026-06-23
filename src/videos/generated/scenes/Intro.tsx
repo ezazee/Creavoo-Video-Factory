@@ -57,14 +57,14 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
             }}
           >
             <p
-              className="font-black tracking-tight text-white text-center"
+              className="font-black tracking-tight text-zinc-900 text-center"
               style={{ fontSize: 80, lineHeight: 1.1 }}
             >
               {videoTitle}
             </p>
             {subtitle && (
               <p
-                className="font-bold text-zinc-400 text-center"
+                className="font-bold text-zinc-500 text-center"
                 style={{ fontSize: 34, opacity: subtitleIn, maxWidth: 860 }}
               >
                 {subtitle}

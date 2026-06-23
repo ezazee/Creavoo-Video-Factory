@@ -11,20 +11,20 @@ export const Background: React.FC<{ accent?: string }> = ({
   const drift = Math.sin(frame / 120) * 80;
 
   return (
-    <AbsoluteFill className="bg-zinc-950">
+    <AbsoluteFill className="bg-white">
       <div
         className="absolute inset-0"
         style={{
           background: `radial-gradient(circle at ${50 + drift / 4}% ${
             30 + drift / 8
-          }%, ${accent}26 0%, transparent 55%)`,
+          }%, ${accent}18 0%, transparent 55%)`,
         }}
       />
       <div
-        className="absolute inset-0 opacity-[0.06]"
+        className="absolute inset-0 opacity-[0.04]"
         style={{
           backgroundImage:
-            "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+            "linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)",
           backgroundSize: "60px 60px",
         }}
       />

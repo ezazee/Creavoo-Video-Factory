@@ -11,9 +11,9 @@ if (!runId) { console.error("Usage: upload-blob.mjs <runId>"); process.exit(1); 
 const videoPath = resolve("out/video.mp4");
 const thumbPath = resolve("out/thumbnail.jpg");
 
-// Extract frame at 1s sebagai thumbnail (ffmpeg tersedia di ubuntu-latest)
+// Extract frame at 3s sebagai thumbnail — detik 1 masih fade-in/gelap, detik 3 intro sudah penuh
 try {
-  execSync(`ffmpeg -ss 1 -i "${videoPath}" -vframes 1 -q:v 2 "${thumbPath}" -y`, { stdio: "pipe" });
+  execSync(`ffmpeg -ss 3 -i "${videoPath}" -vframes 1 -q:v 2 "${thumbPath}" -y`, { stdio: "pipe" });
 } catch { /* thumbnail opsional, jangan fail */ }
 
 const videoData = readFileSync(videoPath);

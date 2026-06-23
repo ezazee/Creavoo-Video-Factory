@@ -105,3 +105,16 @@ jobs:
           node scripts/upload-blob.mjs ${{ github.run_id }}
         env:
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+
+      - name: Notify schedule webhook
+        if: always()
+        run: |
+          if [ -n "$APP_URL" ] && [ -n "$SCHEDULE_WEBHOOK_SECRET" ]; then
+            curl -s -X POST "$APP_URL/api/schedule/complete" \
+              -H "Content-Type: application/json" \
+              -H "X-Schedule-Secret: $SCHEDULE_WEBHOOK_SECRET" \
+              -d "{\"runId\": ${{ github.run_id }}}" || true
+          fi
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SCHEDULE_WEBHOOK_SECRET: ${{ secrets.SCHEDULE_WEBHOOK_SECRET }}

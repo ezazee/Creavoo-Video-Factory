@@ -63,7 +63,7 @@ export const TipSceneBold: React.FC<Props> = ({
       {/* Huge background number */}
       <div style={{
         position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        fontSize: 700, fontWeight: 900, color: `${accent}07`, lineHeight: 1,
+        fontSize: 700, fontWeight: 900, color: `${accent}12`, lineHeight: 1,
         fontFamily: "sans-serif", userSelect: "none", opacity: bgNumIn, pointerEvents: "none",
       }}>
         {number}
@@ -83,7 +83,7 @@ export const TipSceneBold: React.FC<Props> = ({
           {emoji}
         </div>
         <p style={{
-          fontSize: 72, fontWeight: 900, color: "white", textAlign: "center",
+          fontSize: 72, fontWeight: 900, color: "#18181b", textAlign: "center",
           lineHeight: 1.05, marginBottom: 24, letterSpacing: "-1px",
           opacity: titleIn, transform: `scale(${0.85 + titleIn * 0.15})`,
         }}>
@@ -103,7 +103,7 @@ export const TipSceneBold: React.FC<Props> = ({
         {/* Subtitle */}
         <p style={{
           position: "absolute", top: 0, left: 0, right: 0,
-          fontSize: 36, fontWeight: 600, color: "#a1a1aa", textAlign: "center",
+          fontSize: 36, fontWeight: 600, color: "#71717a", textAlign: "center",
           lineHeight: 1.45, opacity: subtitleOpacity,
           transform: `translateY(${(1 - subtitleIn) * 20}px)`,
         }}>

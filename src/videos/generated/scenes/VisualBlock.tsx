@@ -26,7 +26,6 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
 
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-        {/* Big stat number */}
         <div
           style={{
             fontSize: 200,
@@ -35,7 +34,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
             lineHeight: 1,
             opacity: numIn,
             transform: `scale(${0.4 + numIn * 0.6}) scale(${glowPulse})`,
-            filter: `drop-shadow(0 0 40px ${accent}cc)`,
+            filter: `drop-shadow(0 0 40px ${accent}66)`,
             letterSpacing: "-4px",
           }}
         >
@@ -45,7 +44,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           style={{
             fontSize: 42,
             fontWeight: 700,
-            color: "white",
+            color: "#18181b",
             textAlign: "center",
             opacity: labelIn,
             transform: `translateY(${(1 - labelIn) * 20}px)`,
@@ -78,7 +77,6 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
                 transform: `translateX(${(1 - itemIn) * -40}px)`,
               }}
             >
-              {/* Animated check circle */}
               <div
                 style={{
                   width: 56,
@@ -93,14 +91,13 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
                   fontSize: 28,
                   color: "white",
                   fontWeight: 900,
-                  transition: "background 0.3s",
-                  boxShadow: `0 0 16px ${accent}66`,
+                  boxShadow: `0 0 16px ${accent}44`,
                   opacity: itemIn,
                 }}
               >
                 {checkIn > 0.5 ? "✓" : ""}
               </div>
-              <p style={{ fontSize: 40, fontWeight: 700, color: "white", lineHeight: 1.25 }}>
+              <p style={{ fontSize: 40, fontWeight: 700, color: "#18181b", lineHeight: 1.25 }}>
                 {item}
               </p>
             </div>
@@ -135,10 +132,10 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
                   borderRadius: "50%",
                   background: accent,
                   flexShrink: 0,
-                  boxShadow: `0 0 12px ${accent}`,
+                  boxShadow: `0 0 10px ${accent}88`,
                 }}
               />
-              <p style={{ fontSize: 40, fontWeight: 700, color: "white", lineHeight: 1.25 }}>
+              <p style={{ fontSize: 40, fontWeight: 700, color: "#18181b", lineHeight: 1.25 }}>
                 {item}
               </p>
             </div>
@@ -159,14 +156,12 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           width: "100%",
           borderRadius: 24,
           padding: "40px 48px",
-          background: `${accent}18`,
-          border: `2px solid ${accent}44`,
-          boxShadow: `0 0 40px ${accent}22`,
+          background: `${accent}14`,
+          border: `2px solid ${accent}33`,
           opacity: cardIn,
           transform: `scale(${0.92 + cardIn * 0.08})`,
         }}
       >
-        {/* Quote mark */}
         <div
           style={{
             fontSize: 100,
@@ -183,7 +178,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           style={{
             fontSize: 42,
             fontWeight: 700,
-            color: "white",
+            color: "#18181b",
             lineHeight: 1.4,
             fontStyle: "italic",
             opacity: textIn,
@@ -221,10 +216,11 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           overflow: "hidden",
           opacity: cardIn,
           transform: `translateY(${(1 - cardIn) * 24}px)`,
-          boxShadow: `0 8px 40px #00000088`,
+          boxShadow: `0 8px 40px rgba(0,0,0,0.15)`,
+          border: "1px solid #e4e4e7",
         }}
       >
-        {/* Terminal chrome */}
+        {/* Terminal chrome — stays dark intentionally */}
         <div
           style={{
             background: "#1e1e1e",
@@ -243,7 +239,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           </span>
         </div>
         {/* Code lines */}
-        <div style={{ background: "#141414", padding: "28px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ background: "#f8f8f8", padding: "28px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
           {lines.map((line, i) => {
             const delay = i * Math.floor(fps * 0.4);
             const lineIn = spring({ frame: f - delay, fps, config: { damping: 16 } });
@@ -259,14 +255,14 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
                   transform: `translateX(${(1 - lineIn) * -20}px)`,
                 }}
               >
-                <span style={{ color: "#555", fontSize: 28, fontFamily: "monospace", minWidth: 32 }}>
+                <span style={{ color: "#aaa", fontSize: 28, fontFamily: "monospace", minWidth: 32 }}>
                   {i + 1}
                 </span>
                 <span
                   style={{
                     fontSize: 34,
                     fontFamily: "monospace",
-                    color: isComment ? "#6a9955" : isKeyword ? "#569cd6" : "#d4d4d4",
+                    color: isComment ? "#4a7c59" : isKeyword ? "#0070c1" : "#333333",
                     lineHeight: 1.4,
                   }}
                 >
@@ -292,8 +288,8 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
             flex: 1,
             borderRadius: 20,
             padding: "32px 28px",
-            background: "#ef444418",
-            border: "2px solid #ef444444",
+            background: "#fef2f2",
+            border: "2px solid #fca5a5",
             opacity: leftIn,
             transform: `translateX(${(1 - leftIn) * -30}px)`,
           }}
@@ -301,7 +297,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           <p style={{ fontSize: 28, fontWeight: 800, color: "#ef4444", marginBottom: 16 }}>
             {visual.leftLabel ?? "❌ Pemula"}
           </p>
-          <p style={{ fontSize: 36, fontWeight: 600, color: "white", lineHeight: 1.35 }}>
+          <p style={{ fontSize: 36, fontWeight: 600, color: "#18181b", lineHeight: 1.35 }}>
             {visual.left}
           </p>
         </div>
@@ -312,7 +308,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
             flex: 1,
             borderRadius: 20,
             padding: "32px 28px",
-            background: `${accent}18`,
+            background: `${accent}14`,
             border: `2px solid ${accent}44`,
             opacity: rightIn,
             transform: `translateX(${(1 - rightIn) * 30}px)`,
@@ -321,7 +317,7 @@ export const VisualBlock: React.FC<Props> = ({ visual, frame, fps, startFrame, a
           <p style={{ fontSize: 28, fontWeight: 800, color: accent, marginBottom: 16 }}>
             {visual.rightLabel ?? "✅ Pro"}
           </p>
-          <p style={{ fontSize: 36, fontWeight: 600, color: "white", lineHeight: 1.35 }}>
+          <p style={{ fontSize: 36, fontWeight: 600, color: "#18181b", lineHeight: 1.35 }}>
             {visual.right}
           </p>
         </div>

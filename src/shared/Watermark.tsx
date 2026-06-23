@@ -45,17 +45,17 @@ export const Watermark: React.FC<{
       }}
     >
       <div
-        className="flex items-center gap-3 rounded-full border border-white/15 bg-black/55 px-5 py-2.5 backdrop-blur-md"
-        style={{ boxShadow: "0 6px 20px rgba(0,0,0,0.3)" }}
+        className="flex items-center gap-3 rounded-full border border-zinc-200 bg-white/90 px-5 py-2.5 backdrop-blur-md"
+        style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
       >
         {avatarFile && (
           <Img
             src={staticFile(avatarFile)}
-            className="h-12 w-12 rounded-full object-cover"
+            style={{ height: 52, width: "auto", maxWidth: 160, objectFit: "contain", borderRadius: 8 }}
           />
         )}
         {handle && (
-          <span className="font-mono text-3xl font-bold tracking-tight text-white">
+          <span className="font-mono text-3xl font-bold tracking-tight text-zinc-900">
             {handle}
           </span>
         )}

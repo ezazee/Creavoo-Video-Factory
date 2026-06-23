@@ -34,7 +34,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
       <AbsoluteFill className="items-center justify-center">
         <div className="flex flex-col items-center gap-8 px-10">
           <p
-            className="font-black text-white text-center"
+            className="font-black text-zinc-900 text-center"
             style={{
               fontSize: 68,
               opacity: titleIn,
@@ -61,7 +61,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
                 >
                   {i + 1}
                 </div>
-                <span className="font-bold text-white" style={{ fontSize: 38 }}>
+                <span className="font-bold text-zinc-900" style={{ fontSize: 38 }}>
                   {tip.title}
                 </span>
               </div>
@@ -73,7 +73,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
               className="flex flex-col items-center gap-3"
               style={{ opacity: ctaIn }}
             >
-              <p className="font-black text-white text-center" style={{ fontSize: 42 }}>
+              <p className="font-black text-zinc-900 text-center" style={{ fontSize: 42 }}>
                 {ctaText}
               </p>
               <svg

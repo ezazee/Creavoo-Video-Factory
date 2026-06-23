@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
             platformSpecificData: {
               contentType: "reels",
               shareToFeed: igShareToFeed,
-              ...(thumbnailUrl ? { instagramThumbnail: thumbnailUrl } : { thumbOffset: 0 }),
+              // thumbOffset 3000ms = detik 3, konten sudah visible (bukan fade-in gelap)
+              ...(thumbnailUrl ? { instagramThumbnail: thumbnailUrl } : { thumbOffset: 3000 }),
             },
           }
         : { platform, accountId: account._id };
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest) {
         allow_stitch: true,
         content_preview_confirmed: true,
         express_consent_given: true,
+        // video_cover_timestamp_ms: pilih frame detik 3 (3000ms) — konten intro sudah visible
+        // video_cover_image_url: sebagai fallback kalau Zernio support external URL
+        video_cover_timestamp_ms: 3000,
         ...(thumbnailUrl ? { video_cover_image_url: thumbnailUrl } : {}),
       };
     }

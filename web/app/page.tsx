@@ -295,7 +295,7 @@ export default function Home() {
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden text-white">
 
-      <Sidebar history={history} />
+      <Sidebar history={history} onSelectHistory={(id) => { const item = history.find(h => h.id === id); if (item) selectHistory(item); }} />
 
       {/* ── Main ── */}
       <main className="flex-1 overflow-y-auto">
@@ -435,12 +435,12 @@ export default function Home() {
                       </div>
 
                       {/* top-left: logo */}
-                      <div className="absolute top-10 left-4 flex items-center gap-2 bg-black/55 rounded-full px-3 py-2" style={{ backdropFilter: "blur(8px)" }}>
+                      <div className="absolute top-10 left-4 bg-black/55 rounded-xl px-3 py-2" style={{ backdropFilter: "blur(8px)", maxWidth: 90 }}>
                         {watermarkLogoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={watermarkLogoUrl} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          <img src={watermarkLogoUrl} alt="" className="h-7 w-auto max-w-[72px] object-contain rounded-sm" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-zinc-700 border border-white/10 flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-lg bg-zinc-700 border border-white/10 flex items-center justify-center">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                           </div>
                         )}

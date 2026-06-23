@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:docs.zernio.com)",
+      "Bash(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\api\\\\analytics\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\analytics\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\api\\\\analytics\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\analytics\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\api\\\\actions\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\api\\\\blob\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\results\")"
+    ]
+  }
+}
