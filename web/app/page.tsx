@@ -7,11 +7,14 @@ type Step = "idle" | "generating" | "rendering" | "done" | "error";
 type HistoryItem = {
   id: string; title: string; status: "done" | "rendering" | "failed";
   videoUrl?: string; runId?: number; accent: string; createdAt: string;
+  caption?: string; hashtags?: string[];
+  tiktokUrl?: string; instagramUrl?: string;
 };
 type SceneData = {
   videoTitle: string; subtitle: string; introEmoji: string; accent: string;
   tips: { title: string; subtitle: string; emoji: string }[];
   ctaText: string; scenes: { id: string; text: string }[]; layout?: string;
+  caption?: string; hashtags?: string[];
 };
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -63,6 +66,8 @@ export default function Home() {
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [publishing, setPublishing] = useState<"tiktok" | "instagram" | null>(null);
+  const [copied, setCopied] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const saveWatermark = async (handle: string, logoUrl: string | null) => {
@@ -154,7 +159,7 @@ export default function Home() {
       if (!res.ok) throw new Error(await res.text());
       const data: SceneData = await res.json();
       setPreview(data);
-      const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString() };
+      const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString(), caption: data.caption, hashtags: data.hashtags };
       const updated = [newItem, ...history];
       saveHistory(updated);
       setStep("rendering");
@@ -209,11 +214,18 @@ export default function Home() {
       pollActionLogs(runId);
       if (data.status === "completed" && data.videoUrl) {
         setVideoUrl(data.videoUrl); setStep("done");
+        let doneItem: HistoryItem | undefined;
         setHistory((prev) => {
           const updated = prev.map((h) => h.id === id ? { ...h, status: "done" as const, videoUrl: data.videoUrl } : h);
+          doneItem = updated.find((h) => h.id === id);
           localStorage.setItem("vf_history", JSON.stringify(updated));
           return updated;
         });
+        // Auto-upload kalau toggle aktif
+        if (doneItem) {
+          if (autoTikTok) publish("tiktok", doneItem);
+          if (autoInstagram) publish("instagram", doneItem);
+        }
       } else if (data.status === "failed") {
         setError("Render gagal. Cek GitHub Actions untuk detail."); setStep("error");
         setHistory((prev) => {
@@ -229,6 +241,42 @@ export default function Home() {
   };
 
   const activeItem = history.find((h) => h.id === activeId);
+
+  const captionText = (item?: HistoryItem) => {
+    if (!item?.caption) return "";
+    const tags = (item.hashtags ?? []).map(h => `#${h.replace(/^#/, "")}`).join(" ");
+    return tags ? `${item.caption}\n\n${tags}` : item.caption;
+  };
+
+  const copyCaption = async (item: HistoryItem) => {
+    await navigator.clipboard.writeText(captionText(item)).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const publish = async (platform: "tiktok" | "instagram", item: HistoryItem) => {
+    if (!item.videoUrl) return;
+    setPublishing(platform);
+    try {
+      const res = await fetch("/api/publish", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item) }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error ?? "Upload gagal"); return; }
+      const key = platform === "tiktok" ? "tiktokUrl" : "instagramUrl";
+      setHistory((prev) => {
+        const updated = prev.map((h) => h.id === item.id ? { ...h, [key]: d.postUrl ?? "uploaded" } : h);
+        localStorage.setItem("vf_history", JSON.stringify(updated));
+        return updated;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload gagal");
+    } finally {
+      setPublishing(null);
+    }
+  };
+
   const selectedVoiceLabel = VOICES.find(v => v.id === voice)?.label ?? "Pilih Voice";
   const accentColor = "#00AEEF";
 
@@ -571,12 +619,63 @@ export default function Home() {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                 Download MP4
               </a>
-              {(autoTikTok || autoInstagram) && (
-                <div className="rounded-xl border border-white/[0.06] p-4 text-xs text-zinc-500 flex flex-col gap-1.5" style={{ background: "#111113" }}>
-                  {autoTikTok && <p className="flex items-center gap-2"><span>🎵</span> Upload ke TikTok segera diproses…</p>}
-                  {autoInstagram && <p className="flex items-center gap-2"><span>📸</span> Upload ke Instagram Reels segera diproses…</p>}
+              {/* Upload ke platform */}
+              <div className="flex gap-3">
+                {/* TikTok */}
+                {activeItem?.tiktokUrl ? (
+                  <a href={activeItem.tiktokUrl !== "uploaded" ? activeItem.tiktokUrl : undefined} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm border border-green-800/40 text-green-400 transition-colors w-fit"
+                    style={{ background: "#111113" }}>
+                    🎵 Lihat di TikTok ↗
+                  </a>
+                ) : (
+                  <button onClick={() => activeItem && publish("tiktok", activeItem)} disabled={publishing !== null}
+                    className="flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-zinc-300 text-sm border border-white/[0.06] hover:border-white/20 transition-colors w-fit disabled:opacity-50"
+                    style={{ background: "#111113" }}>
+                    {publishing === "tiktok" ? <span className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" /> : "🎵"}
+                    Upload TikTok
+                  </button>
+                )}
+                {/* Instagram */}
+                {activeItem?.instagramUrl ? (
+                  <a href={activeItem.instagramUrl !== "uploaded" ? activeItem.instagramUrl : undefined} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm border border-green-800/40 text-green-400 transition-colors w-fit"
+                    style={{ background: "#111113" }}>
+                    📸 Lihat di Instagram ↗
+                  </a>
+                ) : (
+                  <button onClick={() => activeItem && publish("instagram", activeItem)} disabled={publishing !== null}
+                    className="flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-zinc-300 text-sm border border-white/[0.06] hover:border-white/20 transition-colors w-fit disabled:opacity-50"
+                    style={{ background: "#111113" }}>
+                    {publishing === "instagram" ? <span className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" /> : "📸"}
+                    Upload Instagram
+                  </button>
+                )}
+              </div>
+
+              {/* Caption + hashtag */}
+              {activeItem?.caption && (
+                <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "#111113" }}>
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Caption & Hashtag</p>
+                    <button onClick={() => activeItem && copyCaption(activeItem)}
+                      className="text-xs px-3 py-1 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white transition-colors">
+                      {copied ? "✓ Tersalin" : "Copy"}
+                    </button>
+                  </div>
+                  <div className="p-4 flex flex-col gap-3">
+                    <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{activeItem.caption}</p>
+                    {activeItem.hashtags && activeItem.hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeItem.hashtags.map((h, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-white/[0.05] text-zinc-400">#{h.replace(/^#/, "")}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
+
               <button onClick={newVideo}
                 className="flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-zinc-400 text-sm border border-white/[0.06] hover:text-white hover:border-white/20 transition-colors w-fit"
                 style={{ background: "#111113" }}>

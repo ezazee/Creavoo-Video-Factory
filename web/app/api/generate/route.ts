@@ -70,6 +70,8 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
     }
   ],
   "ctaText": "string (maks 50 karakter, ajakan follow @creavoo.id yang natural)",
+  "caption": "string (caption siap-post untuk TikTok/Instagram: 2-4 kalimat hook + ringkasan nilai video, casual, ada call-to-action follow @creavoo.id. JANGAN sertakan hashtag di sini)",
+  "hashtags": ["string (10-15 hashtag relevan TANPA tanda #, campuran broad + niche, e.g. 'fyp', 'tipskonten', 'socialmediatips')"],
   "scenes": [
     { "id": "intro", "text": "string (narasi voiceover intro, TEPAT 2-3 kalimat pendek, hook pain point yang langsung to-the-point, bahasa Indonesia casual/gaul)" },
     { "id": "tip-1", "text": "string (TEPAT 2-3 kalimat, langsung ke intinya, spesifik dan actionable)" },
@@ -85,7 +87,8 @@ Aturan PENTING:
 - Bahasa Indonesia casual/gaul tapi tetap mudah dipahami
 - SETIAP scene MAKSIMAL 3 kalimat pendek — ini untuk video 1 menit, bukan 2 menit
 - Kalimat harus pendek dan bertenaga — buang kata yang tidak perlu
-- Hindari simbol: # & / → tulis sebagai kata. Tanda @ boleh hanya untuk @creavoo.id di outro
+- Hindari simbol di field scenes/tips/visual: # & / → tulis sebagai kata. Tanda @ boleh hanya untuk @creavoo.id di outro
+- Field "caption" boleh pakai @ dan emoji. Field "hashtags" tulis TANPA tanda # (cukup kata, e.g. "fyp" bukan "#fyp")
 - Angka HARUS ditulis sebagai kata: "lima" bukan "5", "dua puluh" bukan "20" — KECUALI di field visual (number, items, dll)
 - Akronim (AI, TikTok, Instagram, API, URL) boleh dipakai as-is
 - tips array: TEPAT 5 item
@@ -205,6 +208,15 @@ export async function POST(req: NextRequest) {
 
   // layout dari AI, fallback center
   if (!["center", "side", "bold"].includes(data.layout)) data.layout = "center";
+
+  // fallback caption/hashtags kalau AI lupa
+  if (typeof data.caption !== "string" || !data.caption.trim()) {
+    data.caption = `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
+  }
+  if (!Array.isArray(data.hashtags) || data.hashtags.length === 0) {
+    data.hashtags = ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
+  }
+  data.hashtags = data.hashtags.map((h: string) => h.replace(/^#/, "")).slice(0, 15);
   data.knowledgeUsed = useKnowledge;
 
   // Simpan judul ke Blob memory (non-blocking)
