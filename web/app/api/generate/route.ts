@@ -61,7 +61,8 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
     {
       "title": "string (maks 35 karakter, nama tip/poin singkat dan kuat)",
       "subtitle": "string (maks 80 karakter, manfaat atau konteks singkat)",
-      "emoji": "string (1 emoji)"
+      "emoji": "string (1 emoji)",
+      "bullets": ["string (maks 38 karakter, poin spesifik & punchy)", "string", "string"]
     }
   ],
   "ctaText": "string (maks 50 karakter, ajakan follow/subscribe yang natural)",
@@ -83,7 +84,7 @@ Aturan PENTING:
 - Hindari simbol: # @ & / → tulis sebagai kata
 - Angka HARUS ditulis sebagai kata: "lima" bukan "5", "dua puluh" bukan "20"
 - Akronim (AI, TikTok, Instagram, API, URL) boleh dipakai as-is
-- tips array: TEPAT 5 item
+- tips array: TEPAT 5 item, setiap tip punya bullets: TEPAT 3 item (maks 38 karakter, konkrit, no full sentence)
 - scenes array: TEPAT 7 item dengan id persis: intro, tip-1, tip-2, tip-3, tip-4, tip-5, outro`;
 }
 

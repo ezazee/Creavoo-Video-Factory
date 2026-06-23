@@ -14,6 +14,7 @@ export type TipData = {
   title: string;
   subtitle: string;
   emoji: string;
+  bullets?: string[];
 };
 
 export type VideoLayout = "center" | "side" | "bold";
@@ -33,7 +34,7 @@ export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
 
-const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string }>> = {
+const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[] }>> = {
   center: TipScene,
   side: TipSceneSide,
   bold: TipSceneBold,
@@ -88,6 +89,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
               subtitle={tip.subtitle}
               emoji={tip.emoji}
               accent={accentColor}
+              bullets={tip.bullets}
             />
           </Series.Sequence>
         ))}
