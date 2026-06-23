@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { list } from "@vercel/blob";
-import { loadJob, saveJob } from "../route";
+import { loadJob, saveJob, type ScheduleJob } from "../route";
 
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "video blob not found" }, { status: 404 });
   }
 
-  let updated = { ...job, status: "done" as const, videoUrl, thumbnailUrl };
+  let updated: ScheduleJob = { ...job, status: "done", videoUrl, thumbnailUrl };
 
   const captionFull = job.caption
     ? job.caption + (job.hashtags?.length ? "\n\n" + job.hashtags.map(h => `#${h}`).join(" ") : "")

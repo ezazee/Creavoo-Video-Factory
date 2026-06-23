@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-import type { ScheduleSettings, ScheduleJob } from "../api/schedule/route";
+import type { ScheduleSettings, DayConfig, ScheduleJob } from "../api/schedule/route";
 
-const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const DAY_SHORT = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const VOICES = [
   { id: "id-ID-ArdiNeural", label: "Ardi", desc: "Indo · Male" },
@@ -30,6 +31,100 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 86400)}h lalu`;
 }
 
+function configSummary(cfg: DayConfig): string {
+  const times = cfg.times.length
+    ? cfg.times.map(h => `${String(h).padStart(2, "0")}:00`).join(", ")
+    : "–";
+  const voice = cfg.voice.includes("Ardi") ? "Ardi" : "Gadis";
+  const know = cfg.useKnowledge ? "Knowledge ON" : "Knowledge OFF";
+  const feed = cfg.igShareToFeed ? "Feed ON" : "Feed OFF";
+  return `${times} · ${voice} · ${know} · ${feed}`;
+}
+
+function DayConfigPanel({
+  day,
+  config,
+  onChange,
+}: {
+  day: number;
+  config: DayConfig;
+  onChange: (cfg: DayConfig) => void;
+}) {
+  const toggleHour = (h: number) => {
+    const times = config.times.includes(h)
+      ? config.times.filter(x => x !== h)
+      : [...config.times, h].sort((a, b) => a - b);
+    onChange({ ...config, times });
+  };
+
+  return (
+    <div className="border-t border-white/[0.05] px-5 py-4 flex flex-col gap-5">
+      {/* Jam */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-zinc-500 font-medium">Jam Posting (WIB)</p>
+          {config.times.length > 0 && (
+            <p className="text-[10px] text-zinc-600">{config.times.map(h => `${String(h).padStart(2, "0")}:00`).join(", ")}</p>
+          )}
+        </div>
+        <div className="grid grid-cols-6 gap-1.5">
+          {HOURS.map(h => {
+            const active = config.times.includes(h);
+            return (
+              <button key={h} onClick={() => toggleHour(h)}
+                className="h-9 rounded-lg text-[11px] font-bold transition-all"
+                style={{
+                  background: active ? "#00AEEF" : "#ffffff09",
+                  color: active ? "white" : "#71717a",
+                  border: active ? "none" : "1px solid #ffffff10",
+                  boxShadow: active ? "0 2px 8px #00AEEF44" : "none",
+                }}>
+                {String(h).padStart(2, "0")}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Voice */}
+      <div>
+        <p className="text-xs text-zinc-500 font-medium mb-2">Voice</p>
+        <div className="flex gap-2">
+          {VOICES.map(v => (
+            <button key={v.id} onClick={() => onChange({ ...config, voice: v.id })}
+              className="px-4 py-2 rounded-xl border text-left transition-all"
+              style={{
+                borderColor: config.voice === v.id ? "#00AEEF" : "transparent",
+                background: config.voice === v.id ? "#00AEEF15" : "#ffffff07",
+              }}>
+              <p className="text-[10px] text-zinc-500">{v.desc}</p>
+              <p className="text-sm font-bold text-white">{v.label}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Knowledge & Feed */}
+      <div className="flex flex-col gap-0 rounded-xl overflow-hidden border border-white/[0.06]">
+        <div className="px-4 py-3 flex items-center justify-between" style={{ background: "#0e0e10" }}>
+          <div>
+            <p className="text-sm font-medium text-zinc-200">Ikut Knowledge Creavoo</p>
+            <p className="text-[11px] text-zinc-600">Script berdasarkan produk & tone Creavoo</p>
+          </div>
+          <Toggle on={config.useKnowledge} onToggle={() => onChange({ ...config, useKnowledge: !config.useKnowledge })} />
+        </div>
+        <div className="px-4 py-3 flex items-center justify-between border-t border-white/[0.05]" style={{ background: "#0e0e10" }}>
+          <div>
+            <p className="text-sm font-medium text-zinc-200">Tampil di Grid / Feed</p>
+            <p className="text-[11px] text-zinc-600">{config.igShareToFeed ? "Reels muncul di feed & tab Reels" : "Hanya di tab Reels"}</p>
+          </div>
+          <Toggle on={config.igShareToFeed} onToggle={() => onChange({ ...config, igShareToFeed: !config.igShareToFeed })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SchedulePage() {
   const [settings, setSettings] = useState<ScheduleSettings | null>(null);
   const [jobs, setJobs] = useState<ScheduleJob[]>([]);
@@ -37,6 +132,7 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [runLog, setRunLog] = useState<string[] | null>(null);
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/schedule")
@@ -64,14 +160,23 @@ export default function SchedulePage() {
       ? settings.days.filter(x => x !== d)
       : [...settings.days, d];
     save({ days });
+    // auto expand when enabling
+    if (!settings.days.includes(d)) setExpandedDay(d);
   };
 
-  const toggleHour = (h: number) => {
+  const updateDayConfig = (day: number, cfg: DayConfig) => {
     if (!settings) return;
-    const times = settings.times.includes(h)
-      ? settings.times.filter(x => x !== h)
-      : [...settings.times, h].sort((a, b) => a - b);
-    save({ times });
+    const dayConfigs = { ...(settings.dayConfigs ?? {}), [day]: cfg };
+    save({ dayConfigs });
+  };
+
+  const getDayConfig = (day: number): DayConfig => {
+    return settings?.dayConfigs?.[day] ?? {
+      times: settings?.times ?? [9],
+      voice: settings?.voice ?? "id-ID-ArdiNeural",
+      useKnowledge: settings?.useKnowledge ?? true,
+      igShareToFeed: settings?.igShareToFeed ?? true,
+    };
   };
 
   const runNow = async () => {
@@ -81,7 +186,6 @@ export default function SchedulePage() {
       const d = await res.json();
       setRunLog(d.log ?? [d.skipped ?? d.error ?? "done"]);
       if (d.runId) {
-        // Refresh jobs setelah beberapa detik
         setTimeout(() => {
           fetch("/api/schedule").then(r => r.json()).then(x => setJobs(x.jobs ?? [])).catch(() => {});
         }, 3000);
@@ -137,93 +241,80 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          {/* Hari */}
+          {/* Per-day config */}
           <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
             <div className="px-5 py-4 border-b border-white/[0.06]">
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Hari</p>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Jadwal Per Hari</p>
+              <p className="text-[11px] text-zinc-600 mt-1">Aktifkan hari lalu klik untuk atur jam, voice, dan opsi per hari</p>
             </div>
-            <div className="px-5 py-4 flex gap-2 flex-wrap">
-              {DAYS.map((label, i) => {
-                const active = settings.days.includes(i);
+
+            <div className="divide-y divide-white/[0.04]">
+              {DAY_NAMES.map((name, day) => {
+                const active = settings.days.includes(day);
+                const expanded = expandedDay === day;
+                const cfg = getDayConfig(day);
+                const hasCustom = !!settings.dayConfigs?.[day];
+
                 return (
-                  <button key={i} onClick={() => toggleDay(i)}
-                    className="w-12 h-12 rounded-xl text-sm font-bold transition-all"
-                    style={{
-                      background: active ? "#00AEEF" : "#ffffff09",
-                      color: active ? "white" : "#71717a",
-                      border: active ? "none" : "1px solid #ffffff10",
-                      boxShadow: active ? "0 4px 12px #00AEEF44" : "none",
-                    }}>
-                    {label}
-                  </button>
+                  <div key={day}>
+                    {/* Day row */}
+                    <div className="px-5 py-3.5 flex items-center gap-3">
+                      {/* Active toggle */}
+                      <button
+                        onClick={() => toggleDay(day)}
+                        className="w-10 h-10 rounded-xl text-sm font-bold flex-shrink-0 transition-all"
+                        style={{
+                          background: active ? "#00AEEF" : "#ffffff09",
+                          color: active ? "white" : "#52525b",
+                          border: active ? "none" : "1px solid #ffffff10",
+                          boxShadow: active ? "0 4px 12px #00AEEF44" : "none",
+                        }}>
+                        {DAY_SHORT[day]}
+                      </button>
+
+                      {/* Summary */}
+                      <div className="flex-1 min-w-0">
+                        {active ? (
+                          <p className="text-[11px] text-zinc-500 truncate">{configSummary(cfg)}</p>
+                        ) : (
+                          <p className="text-[11px] text-zinc-700">Tidak aktif</p>
+                        )}
+                        {hasCustom && active && (
+                          <span className="text-[9px] text-[#00AEEF] font-semibold uppercase tracking-wider">Custom</span>
+                        )}
+                      </div>
+
+                      {/* Expand button — only when active */}
+                      {active && (
+                        <button
+                          onClick={() => setExpandedDay(expanded ? null : day)}
+                          className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors px-2 py-1 rounded-lg"
+                          style={{ background: "#ffffff07" }}>
+                          {expanded ? "▲ Tutup" : "▼ Atur"}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Expanded config */}
+                    {active && expanded && (
+                      <DayConfigPanel
+                        day={day}
+                        config={cfg}
+                        onChange={(newCfg) => updateDayConfig(day, newCfg)}
+                      />
+                    )}
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Jam */}
+          {/* Auto-post settings */}
           <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
             <div className="px-5 py-4 border-b border-white/[0.06]">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Jam Posting (WIB)</p>
-                {settings.times.length > 0 && (
-                  <p className="text-xs text-zinc-600">{settings.times.map(h => `${String(h).padStart(2, "0")}:00`).join(", ")}</p>
-                )}
-              </div>
-            </div>
-            <div className="px-5 py-4 grid grid-cols-6 gap-2">
-              {HOURS.map(h => {
-                const active = settings.times.includes(h);
-                return (
-                  <button key={h} onClick={() => toggleHour(h)}
-                    className="h-10 rounded-lg text-xs font-bold transition-all"
-                    style={{
-                      background: active ? "#00AEEF" : "#ffffff09",
-                      color: active ? "white" : "#71717a",
-                      border: active ? "none" : "1px solid #ffffff10",
-                      boxShadow: active ? "0 4px 12px #00AEEF44" : "none",
-                    }}>
-                    {String(h).padStart(2, "0")}:00
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Settings */}
-          <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
-            <div className="px-5 py-4 border-b border-white/[0.06]">
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Pengaturan Video</p>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Auto-Post</p>
             </div>
 
-            {/* Voice */}
-            <div className="px-5 py-4 border-b border-white/[0.06]">
-              <p className="text-xs text-zinc-500 mb-3">Voice</p>
-              <div className="flex gap-2">
-                {VOICES.map(v => (
-                  <button key={v.id} onClick={() => save({ voice: v.id })}
-                    className="px-4 py-2.5 rounded-xl border text-left transition-all"
-                    style={{
-                      borderColor: settings.voice === v.id ? "#00AEEF" : "transparent",
-                      background: settings.voice === v.id ? "#00AEEF15" : "#ffffff07",
-                    }}>
-                    <p className="text-[10px] text-zinc-500">{v.desc}</p>
-                    <p className="text-sm font-bold text-white">{v.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Knowledge */}
-            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-zinc-200">Ikut Knowledge Creavoo</p>
-                <p className="text-[11px] text-zinc-600 mt-0.5">Script berdasarkan produk & tone Creavoo</p>
-              </div>
-              <Toggle on={settings.useKnowledge} onToggle={() => save({ useKnowledge: !settings.useKnowledge })} />
-            </div>
-
-            {/* Auto-post TikTok */}
             <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="text-base">🎵</span>
@@ -235,8 +326,7 @@ export default function SchedulePage() {
               <Toggle on={settings.autoTikTok} onToggle={() => save({ autoTikTok: !settings.autoTikTok })} />
             </div>
 
-            {/* Auto-post Instagram */}
-            <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="text-base">📸</span>
                 <div>
@@ -246,24 +336,15 @@ export default function SchedulePage() {
               </div>
               <Toggle on={settings.autoInstagram} onToggle={() => save({ autoInstagram: !settings.autoInstagram })} />
             </div>
-
-            {/* Share to feed */}
-            <div className="px-5 py-4 flex items-center justify-between pl-12">
-              <div>
-                <p className="text-xs font-medium text-zinc-400">Tampil di grid / feed profil</p>
-                <p className="text-[11px] text-zinc-600">{settings.igShareToFeed ? "Reels muncul di feed & tab Reels" : "Hanya di tab Reels"}</p>
-              </div>
-              <Toggle on={settings.igShareToFeed} onToggle={() => save({ igShareToFeed: !settings.igShareToFeed })} />
-            </div>
           </div>
 
-          {/* Run Now */}
+          {/* Manual trigger */}
           <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
             <div className="px-5 py-4 border-b border-white/[0.06]">
               <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Manual Trigger</p>
             </div>
             <div className="px-5 py-4 flex flex-col gap-3">
-              <p className="text-xs text-zinc-500">Jalankan satu siklus sekarang: cek pending jobs + generate video baru (jika jadwal aktif & waktunya cocok, atau paksa dari sini).</p>
+              <p className="text-xs text-zinc-500">Jalankan satu siklus sekarang: cek pending jobs + generate video baru.</p>
               <button onClick={runNow} disabled={running}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-50"
                 style={{ background: "linear-gradient(135deg,#6366f1,#00AEEF)", boxShadow: "0 4px 16px #6366f140" }}>

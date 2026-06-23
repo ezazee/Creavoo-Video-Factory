@@ -1,0 +1,101 @@
+name: Render Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      props_json:
+        description: "Image props as JSON (videoTitle, tips, accent, etc)"
+        required: true
+      type:
+        description: "Post type: single or carousel"
+        default: "single"
+      total_slides:
+        description: "Total slides for carousel (cover + tips + outro)"
+        default: "7"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare props & download logo
+        id: prep
+        run: |
+          BASE_PROPS=$(python3 - <<'PYEOF'
+          import json, os, urllib.request
+          props = json.loads(os.environ["PROPS_JSON"])
+          logo_url = props.pop("watermarkLogoUrl", None)
+          if logo_url:
+              import pathlib
+              ext = logo_url.split(".")[-1].split("?")[0] or "png"
+              dest = pathlib.Path(f"public/watermark-logo.{ext}")
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              urllib.request.urlretrieve(logo_url, dest)
+              props["watermarkLogo"] = f"watermark-logo.{ext}"
+          print(json.dumps(props))
+          PYEOF
+          )
+          echo "base_props=$BASE_PROPS" >> $GITHUB_OUTPUT
+        env:
+          PROPS_JSON: ${{ inputs.props_json }}
+
+      - name: Render single post
+        if: ${{ inputs.type == 'single' }}
+        run: |
+          mkdir -p out
+          npx remotion still InstagramPost out/post.jpg \
+            --props='${{ steps.prep.outputs.base_props }}' \
+            --image-format=jpeg --jpeg-quality=95
+
+      - name: Render carousel slides
+        if: ${{ inputs.type == 'carousel' }}
+        run: |
+          mkdir -p out
+          TOTAL=${{ inputs.total_slides }}
+          BASE='${{ steps.prep.outputs.base_props }}'
+          for i in $(seq 0 $((TOTAL - 1))); do
+            SLIDE_PROPS=$(python3 -c "
+          import json, sys
+          p = json.loads(sys.argv[1])
+          p['slideIndex'] = $i
+          p['totalSlides'] = $TOTAL
+          print(json.dumps(p))
+          " "$BASE")
+            echo "→ Rendering slide $i/$((TOTAL-1))…"
+            npx remotion still InstagramCarouselSlide "out/slide-$i.jpg" \
+              --props="$SLIDE_PROPS" \
+              --image-format=jpeg --jpeg-quality=95
+          done
+
+      - name: Upload to Vercel Blob
+        run: |
+          npm install @vercel/blob --no-save
+          node scripts/upload-image-blob.mjs ${{ github.run_id }} ${{ inputs.type }}
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+
+      - name: Notify webhook
+        if: always()
+        run: |
+          if [ -n "$APP_URL" ] && [ -n "$SCHEDULE_WEBHOOK_SECRET" ]; then
+            curl -s -X POST "$APP_URL/api/image/complete" \
+              -H "Content-Type: application/json" \
+              -H "X-Schedule-Secret: $SCHEDULE_WEBHOOK_SECRET" \
+              -d "{\"runId\": ${{ github.run_id }}}" || true
+          fi
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SCHEDULE_WEBHOOK_SECRET: ${{ secrets.SCHEDULE_WEBHOOK_SECRET }}

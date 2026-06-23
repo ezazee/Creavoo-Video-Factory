@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, head, list } from "@vercel/blob";
 
-export type ScheduleSettings = {
-  enabled: boolean;
-  times: number[];          // jam WIB, e.g. [9, 18] = jam 9 pagi & 6 sore
-  days: number[];           // 0=Minggu, 1=Senin ... 6=Sabtu
+export type DayConfig = {
+  times: number[];       // jam WIB aktif di hari ini
   voice: string;
   useKnowledge: boolean;
+  igShareToFeed: boolean;
+};
+
+export type ScheduleSettings = {
+  enabled: boolean;
+  days: number[];           // 0=Minggu ... 6=Sabtu — hari mana yang aktif
+  dayConfigs: Partial<Record<number, DayConfig>>;  // config per hari
   autoTikTok: boolean;
   autoInstagram: boolean;
+  // global defaults — dipakai kalau hari belum punya dayConfig sendiri
+  times: number[];
+  voice: string;
+  useKnowledge: boolean;
   igShareToFeed: boolean;
 };
 
@@ -32,16 +41,33 @@ const SETTINGS_KEY = "settings/schedule.json";
 const JOBS_PREFIX = "schedule/jobs/";
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
+export const DEFAULT_DAY_CONFIG: DayConfig = {
+  times: [9],
+  voice: "id-ID-ArdiNeural",
+  useKnowledge: true,
+  igShareToFeed: true,
+};
+
 export const DEFAULT_SETTINGS: ScheduleSettings = {
   enabled: false,
-  times: [9],
   days: [1, 2, 3, 4, 5],
+  dayConfigs: {},
   voice: "id-ID-ArdiNeural",
   useKnowledge: true,
   autoTikTok: false,
   autoInstagram: false,
   igShareToFeed: true,
+  times: [9],
 };
+
+export function getDayConfig(settings: ScheduleSettings, day: number): DayConfig {
+  return settings.dayConfigs?.[day] ?? {
+    times: settings.times,
+    voice: settings.voice,
+    useKnowledge: settings.useKnowledge,
+    igShareToFeed: settings.igShareToFeed,
+  };
+}
 
 export async function loadSettings(): Promise<ScheduleSettings> {
   try {

@@ -17,6 +17,12 @@ import {
   type GeneratedVideoProps,
 } from "./videos/generated/Composition";
 import { SCENE_IDS, audioPath as genAudioPath } from "./videos/generated/voiceover";
+import {
+  InstagramPostComposition,
+  InstagramCarouselSlideComposition,
+  type InstagramPostProps,
+  type InstagramCarouselSlideProps,
+} from "./videos/instagram-post/Composition";
 
 const FPS = 30;
 const TAIL_BUFFER_FRAMES = 12;
@@ -139,6 +145,54 @@ export const RemotionRoot: React.FC = () => {
           layout: "center",
         }}
         calculateMetadata={makeMetadataGenerated(GEN_FALLBACK)}
+      />
+      <Composition
+        id="InstagramPost"
+        component={InstagramPostComposition}
+        fps={FPS}
+        width={1080}
+        height={1080}
+        durationInFrames={1}
+        defaultProps={{
+          videoTitle: "5 Tips Viral di Instagram",
+          subtitle: "yang wajib kamu tahu sekarang",
+          introEmoji: "🚀",
+          accent: "#6366f1",
+          tips: [
+            { title: "Hook di 3 detik", subtitle: "Buka dengan pertanyaan atau fakta", emoji: "⚡" },
+            { title: "Visual yang stopping", subtitle: "Warna kontras & teks besar", emoji: "🎨" },
+            { title: "Caption singkat", subtitle: "Maksimal 2 baris yang bikin penasaran", emoji: "✍️" },
+            { title: "Konsisten posting", subtitle: "Minimal 3–5x seminggu", emoji: "📅" },
+            { title: "CTA yang jelas", subtitle: "Minta follow, save, atau komentar", emoji: "📣" },
+          ],
+          ctaText: "Follow @creavoo.id 🚀",
+          watermarkHandle: "@creavoo.id",
+        } satisfies InstagramPostProps}
+      />
+      <Composition
+        id="InstagramCarouselSlide"
+        component={InstagramCarouselSlideComposition}
+        fps={FPS}
+        width={1080}
+        height={1080}
+        durationInFrames={1}
+        defaultProps={{
+          videoTitle: "5 Tips Viral di Instagram",
+          subtitle: "yang wajib kamu tahu sekarang",
+          introEmoji: "🚀",
+          accent: "#6366f1",
+          tips: [
+            { title: "Hook di 3 detik", subtitle: "Buka dengan pertanyaan atau fakta", emoji: "⚡" },
+            { title: "Visual yang stopping", subtitle: "Warna kontras & teks besar", emoji: "🎨" },
+            { title: "Caption singkat", subtitle: "Maksimal 2 baris yang bikin penasaran", emoji: "✍️" },
+            { title: "Konsisten posting", subtitle: "Minimal 3–5x seminggu", emoji: "📅" },
+            { title: "CTA yang jelas", subtitle: "Minta follow, save, atau komentar", emoji: "📣" },
+          ],
+          ctaText: "Follow @creavoo.id 🚀",
+          watermarkHandle: "@creavoo.id",
+          slideIndex: 0,
+          totalSlides: 7,
+        } satisfies InstagramCarouselSlideProps}
       />
     </>
   );

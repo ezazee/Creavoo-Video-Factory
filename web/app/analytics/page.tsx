@@ -54,7 +54,6 @@ type AnalyticsData = {
   errors: { tiktok: string | null; instagram: string | null; daily: string | null };
 };
 
-const TIKTOK_COLOR = "#010101";
 const IG_COLOR = "#E1306C";
 const DAYS_OPTIONS = [7, 30, 90];
 
@@ -100,18 +99,18 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetch(`/api/analytics?days=${days}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(String(e));
-        setLoading(false);
-      });
+    const load = () => {
+      setLoading(true);
+      setError(null);
+      fetch(`/api/analytics?days=${days}`)
+        .then((r) => r.json())
+        .then((d) => { setData(d); setLoading(false); })
+        .catch((e) => { setError(String(e)); setLoading(false); });
+    };
+
+    load();
+    const interval = setInterval(load, 60 * 60 * 1000); // refresh tiap 1 jam (ikut Zernio)
+    return () => clearInterval(interval);
   }, [days]);
 
   const tt = data?.tiktok;

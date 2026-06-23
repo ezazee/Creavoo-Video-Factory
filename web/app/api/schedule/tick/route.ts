@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { list } from "@vercel/blob";
-import { loadSettings, loadRecentJobs, saveJob, loadJob } from "../route";
+import { loadSettings, loadRecentJobs, saveJob, getDayConfig, type ScheduleJob } from "../route";
 
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 const GITHUB_REPO = process.env.GITHUB_REPO ?? "";
@@ -55,7 +55,7 @@ async function processPendingJobs() {
 
       if (!videoUrl) { log.push(`job ${job.runId} → blob not ready yet`); continue; }
 
-      let updated = { ...job, status: "done" as const, videoUrl, thumbnailUrl };
+      let updated: ScheduleJob = { ...job, status: "done", videoUrl, thumbnailUrl };
 
       // Auto-post ke platform
       const captionFull = job.caption
@@ -119,7 +119,10 @@ export async function GET(req: NextRequest) {
   if (!settings.days.includes(wibDay)) {
     return NextResponse.json({ skipped: `not scheduled on day ${wibDay}`, log });
   }
-  if (!settings.times.includes(wibHour)) {
+
+  const dayConfig = getDayConfig(settings, wibDay);
+
+  if (!dayConfig.times.includes(wibHour)) {
     return NextResponse.json({ skipped: `not scheduled at hour ${wibHour} WIB`, log });
   }
 
@@ -151,27 +154,25 @@ export async function GET(req: NextRequest) {
     const trendTopics: string[] = trendsData.topics ?? [];
 
     let topic: string;
-    if (settings.useKnowledge) {
-      // Knowledge ON: pakai trending topics
+    if (dayConfig.useKnowledge) {
       topic = trendTopics[Math.floor(Math.random() * Math.min(trendTopics.length, 3))] ?? "Tips viral sosmed 2026";
     } else {
-      // Knowledge OFF: rotasi dari kategori topik digital
       const allTopics = trendTopics.length > 0 ? [...trendTopics.slice(0, 3), ...KNOWLEDGE_OFF_TOPICS] : KNOWLEDGE_OFF_TOPICS;
       topic = allTopics[Math.floor(Math.random() * Math.min(allTopics.length, 10))];
     }
-    log.push(`topic: ${topic}`);
+    log.push(`topic: ${topic} (voice=${dayConfig.voice}, knowledge=${dayConfig.useKnowledge})`);
 
     // Generate script
     const script = await callInternal("/api/generate", "POST", {
       topic,
-      useKnowledge: settings.useKnowledge,
+      useKnowledge: dayConfig.useKnowledge,
     });
     log.push(`generated: ${script.videoTitle}`);
 
     // Trigger render
     const renderRes = await callInternal("/api/render", "POST", {
       ...script,
-      voice: settings.voice,
+      voice: dayConfig.voice,
       watermarkHandle: "",
       watermarkLogoUrl: null,
     });
@@ -188,7 +189,7 @@ export async function GET(req: NextRequest) {
       hashtags: script.hashtags,
       autoTikTok: settings.autoTikTok,
       autoInstagram: settings.autoInstagram,
-      igShareToFeed: settings.igShareToFeed,
+      igShareToFeed: dayConfig.igShareToFeed,
     });
 
     return NextResponse.json({ ok: true, runId, topic, videoTitle: script.videoTitle, log });
