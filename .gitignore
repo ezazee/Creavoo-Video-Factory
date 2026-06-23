@@ -9,3 +9,8 @@ out
 # Generated voiceover audio — regenerate with `npm run generate-voiceover`.
 # The folders are kept (see .gitkeep); the MP3s are not committed.
 public/voiceover/**/*.mp3
+
+# Next.js web app
+web/.next
+web/node_modules
+web/.env.local

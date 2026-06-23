@@ -49,29 +49,46 @@ export async function POST(req: NextRequest) {
 
   if (!topic) return NextResponse.json({ error: "topic required" }, { status: 400 });
 
-  const completion = await client.chat.completions.create({
-    model: process.env.AI_MODEL ?? "creavoo-combo",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: `Buat script video pendek tentang: "${topic}". ${accent ? `Gunakan warna accent: ${accent}` : ""}`,
-      },
-    ],
-    temperature: 0.8,
-    max_tokens: 2000,
-  });
-
-  const raw = completion.choices[0].message.content ?? "";
-
-  // Strip markdown code blocks if AI wraps in ```json
-  const jsonStr = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-
   let data;
-  try {
-    data = JSON.parse(jsonStr);
-  } catch {
-    return NextResponse.json({ error: "AI returned invalid JSON", raw }, { status: 500 });
+  let lastRaw = "";
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const completion = await client.chat.completions.create({
+      model: process.env.AI_MODEL ?? "creavoo-combo",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Buat script video pendek tentang: "${topic}". ${accent ? `Gunakan warna accent: ${accent}` : ""}\n\nPENTING: Kembalikan JSON lengkap, jangan dipotong di tengah.`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 4000,
+    });
+
+    lastRaw = completion.choices[0].message.content ?? "";
+
+    // Strip markdown code blocks
+    let jsonStr = lastRaw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+
+    // Extract JSON object if there's text before/after
+    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+
+    try {
+      data = JSON.parse(jsonStr);
+      // Validate required fields
+      if (data.videoTitle && Array.isArray(data.tips) && data.tips.length === 5 && Array.isArray(data.scenes) && data.scenes.length === 7) {
+        break;
+      }
+      data = null; // incomplete, retry
+    } catch {
+      data = null;
+    }
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "AI returned invalid JSON", raw: lastRaw }, { status: 500 });
   }
 
   // Override accent if user picked one
