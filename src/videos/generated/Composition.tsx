@@ -4,6 +4,8 @@ import { Background } from "../../shared/Background";
 import { Watermark } from "../../shared/Watermark";
 import { Intro } from "./scenes/Intro";
 import { TipScene } from "./scenes/TipScene";
+import { TipSceneSide } from "./scenes/TipSceneSide";
+import { TipSceneBold } from "./scenes/TipSceneBold";
 import { Outro } from "./scenes/Outro";
 import { SCENE_IDS, audioPath } from "./voiceover";
 import type { SceneId } from "./voiceover";
@@ -14,6 +16,8 @@ export type TipData = {
   emoji: string;
 };
 
+export type VideoLayout = "center" | "side" | "bold";
+
 export type GeneratedVideoProps = {
   sceneDurations: number[];
   videoTitle: string;
@@ -22,11 +26,18 @@ export type GeneratedVideoProps = {
   accent: string;
   tips: TipData[];
   ctaText: string;
+  layout?: VideoLayout;
 };
 
 export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
+
+const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string }>> = {
+  center: TipScene,
+  side: TipSceneSide,
+  bold: TipSceneBold,
+};
 
 export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   sceneDurations,
@@ -36,7 +47,9 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   accent,
   tips,
   ctaText,
+  layout = "center",
 }) => {
+  const TipComponent = TIP_SCENE_MAP[layout] ?? TipScene;
   const durations =
     sceneDurations.length === SCENE_IDS.length
       ? sceneDurations
@@ -68,7 +81,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
 
         {tips.map((tip, i) => (
           <Series.Sequence key={i} durationInFrames={durations[i + 1]} premountFor={30}>
-            <TipScene
+            <TipComponent
               duration={durations[i + 1]}
               number={i + 1}
               title={tip.title}

@@ -136,6 +136,7 @@ export const RemotionRoot: React.FC = () => {
             { title: "Tip 5", subtitle: "Deskripsi tip 5", emoji: "✨" },
           ],
           ctaText: "Tulis di komentar 👇",
+          layout: "center",
         }}
         calculateMetadata={makeMetadataGenerated(GEN_FALLBACK)}
       />
