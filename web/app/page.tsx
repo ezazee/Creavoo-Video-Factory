@@ -6,9 +6,10 @@ import Sidebar from "./components/Sidebar";
 type Step = "idle" | "generating" | "rendering" | "done" | "error";
 type HistoryItem = {
   id: string; title: string; status: "done" | "rendering" | "failed";
-  videoUrl?: string; runId?: number; accent: string; createdAt: string;
+  videoUrl?: string; thumbnailUrl?: string; runId?: number; accent: string; createdAt: string;
   caption?: string; hashtags?: string[];
   tiktokUrl?: string; instagramUrl?: string;
+  autoTikTok?: boolean; autoInstagram?: boolean; igShareToFeed?: boolean;
 };
 type SceneData = {
   videoTitle: string; subtitle: string; introEmoji: string; accent: string;
@@ -62,12 +63,15 @@ export default function Home() {
   const [loadingTrends, setLoadingTrends] = useState(false);
   const [autoTikTok, setAutoTikTok] = useState(false);
   const [autoInstagram, setAutoInstagram] = useState(false);
+  const [igShareToFeed, setIgShareToFeed] = useState(true);
   const [showVoice, setShowVoice] = useState(false);
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [publishing, setPublishing] = useState<"tiktok" | "instagram" | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showResetMemory, setShowResetMemory] = useState(false);
+  const [resettingMemory, setResettingMemory] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const saveWatermark = async (handle: string, logoUrl: string | null) => {
@@ -159,7 +163,7 @@ export default function Home() {
       if (!res.ok) throw new Error(await res.text());
       const data: SceneData = await res.json();
       setPreview(data);
-      const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString(), caption: data.caption, hashtags: data.hashtags };
+      const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString(), caption: data.caption, hashtags: data.hashtags, autoTikTok, autoInstagram, igShareToFeed };
       const updated = [newItem, ...history];
       saveHistory(updated);
       setStep("rendering");
@@ -216,15 +220,16 @@ export default function Home() {
         setVideoUrl(data.videoUrl); setStep("done");
         let doneItem: HistoryItem | undefined;
         setHistory((prev) => {
-          const updated = prev.map((h) => h.id === id ? { ...h, status: "done" as const, videoUrl: data.videoUrl } : h);
+          const updated = prev.map((h) => h.id === id ? { ...h, status: "done" as const, videoUrl: data.videoUrl, thumbnailUrl: data.thumbnailUrl ?? h.thumbnailUrl } : h);
           doneItem = updated.find((h) => h.id === id);
           localStorage.setItem("vf_history", JSON.stringify(updated));
           return updated;
         });
-        // Auto-upload kalau toggle aktif
+        // Auto-upload kalau preferensi tersimpan di item (bukan state global,
+        // biar tetap jalan walau halaman di-resume / di-mount ulang)
         if (doneItem) {
-          if (autoTikTok) publish("tiktok", doneItem);
-          if (autoInstagram) publish("instagram", doneItem);
+          if (doneItem.autoTikTok && !doneItem.tiktokUrl) publish("tiktok", doneItem);
+          if (doneItem.autoInstagram && !doneItem.instagramUrl) publish("instagram", doneItem);
         }
       } else if (data.status === "failed") {
         setError("Render gagal. Cek GitHub Actions untuk detail."); setStep("error");
@@ -260,7 +265,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item) }),
+        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true }),
       });
       const d = await res.json();
       if (!res.ok) { setError(d.error ?? "Upload gagal"); return; }
@@ -275,6 +280,13 @@ export default function Home() {
     } finally {
       setPublishing(null);
     }
+  };
+
+  const resetMemory = async () => {
+    setResettingMemory(true);
+    await fetch("/api/memory", { method: "DELETE" }).catch(() => {});
+    setResettingMemory(false);
+    setShowResetMemory(false);
   };
 
   const selectedVoiceLabel = VOICES.find(v => v.id === voice)?.label ?? "Pilih Voice";
@@ -481,10 +493,17 @@ export default function Home() {
                   </div>
                   <Toggle on={autoInstagram} onToggle={() => setAutoInstagram(v => !v)} />
                 </div>
+                <div className="flex items-center justify-between pl-8">
+                  <div>
+                    <p className="text-xs font-medium text-zinc-400">Tampil di grid / feed profil</p>
+                    <p className="text-[11px] text-zinc-600">{igShareToFeed ? "Reels muncul di feed & tab Reels" : "Hanya di tab Reels"}</p>
+                  </div>
+                  <Toggle on={igShareToFeed} onToggle={() => setIgShareToFeed(v => !v)} />
+                </div>
               </div>
 
               {/* Generate button */}
-              <div className="p-5">
+              <div className="p-5 flex flex-col gap-2">
                 <button onClick={generate} disabled={!topic.trim()}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{
@@ -495,12 +514,18 @@ export default function Home() {
                   Generate video sekarang
                   <span className="text-xs opacity-60 ml-1 font-normal hidden sm:inline">⌘↵</span>
                 </button>
+                <button onClick={() => setShowResetMemory(true)}
+                  className="w-full py-2 rounded-xl text-xs text-zinc-600 hover:text-red-400 transition-colors border border-transparent hover:border-red-900/40">
+                  🗑 Reset memory AI
+                </button>
               </div>
             </div>
           </div>
+
         )}
 
         {/* ── Generating ── */}
+
         {step === "generating" && (
           <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8">
             <div className="w-12 h-12 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${accentColor}40`, borderTopColor: accentColor }} />
@@ -701,6 +726,36 @@ export default function Home() {
         )}
 
       </main>
+
+      {/* Modal konfirmasi reset memory */}
+      {showResetMemory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-6">
+          <div className="rounded-2xl border border-white/[0.08] p-6 flex flex-col gap-4 max-w-sm w-full" style={{ background: "#111113" }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-xl flex-shrink-0">⚠️</div>
+              <div>
+                <p className="text-white font-bold text-sm">Reset Memory AI?</p>
+                <p className="text-zinc-500 text-xs mt-0.5">AI tidak akan ingat topik yang sudah pernah dibuat.</p>
+              </div>
+            </div>
+            <p className="text-zinc-400 text-xs leading-relaxed border border-white/[0.06] rounded-xl p-3" style={{ background: "#0a0a0a" }}>
+              Memory digunakan supaya AI tidak bikin video dengan topik yang sama berulang. Kalau di-reset, AI bisa saja mengulang topik lama di video berikutnya.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowResetMemory(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-zinc-400 border border-white/[0.06] hover:text-white transition-colors"
+                style={{ background: "#0a0a0a" }}>
+                Batal
+              </button>
+              <button onClick={resetMemory} disabled={resettingMemory}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                style={{ background: "#ef4444", boxShadow: "0 4px 16px #ef444440" }}>
+                {resettingMemory ? "Menghapus…" : "Ya, reset memory"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

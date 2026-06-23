@@ -118,19 +118,19 @@ async function readMemory(): Promise<string[]> {
   }
 }
 
-async function appendMemory(title: string): Promise<void> {
+async function appendMemory(entry: string): Promise<void> {
   try {
     const existing = await readMemory();
-    const updated = [title, ...existing].slice(0, 100); // simpan max 100
+    const updated = [entry, ...existing].slice(0, 100);
     await put(MEMORY_BLOB_KEY, JSON.stringify(updated), {
       access: "public", token: BLOB_TOKEN, addRandomSuffix: false,
     });
   } catch { /* non-blocking */ }
 }
 
-function buildMemoryBlock(titles: string[]): string {
-  if (!titles.length) return "";
-  return `\n\n---\n## MEMORY — Video yang sudah pernah dibuat (JANGAN duplikasi topik/angle ini):\n${titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nAturan memory:\n- Jangan buat video dengan topik, angle, atau hook yang mirip dengan list di atas\n- Kalau topik yang diminta user sama, cari sudut pandang yang BENAR-BENAR berbeda\n- Variasikan format narasi, bukan cuma ganti judul\n---\n`;
+function buildMemoryBlock(entries: string[]): string {
+  if (!entries.length) return "";
+  return `\n\n---\n## MEMORY — Video yang sudah pernah dibuat (JANGAN duplikasi topik/angle ini):\n${entries.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nAturan memory:\n- Jangan buat video dengan topik, angle, atau hook yang mirip dengan list di atas\n- Topik yang sama = cari sudut pandang yang BENAR-BENAR berbeda\n- Format "topik → judul": topik adalah tema aslinya, judul adalah angle yang sudah dipakai\n- Kalau topik mirip → GANTI angle, format narasi, dan hook\n---\n`;
 }
 
 export async function POST(req: NextRequest) {
@@ -219,8 +219,8 @@ export async function POST(req: NextRequest) {
   data.hashtags = data.hashtags.map((h: string) => h.replace(/^#/, "")).slice(0, 15);
   data.knowledgeUsed = useKnowledge;
 
-  // Simpan judul ke Blob memory (non-blocking)
-  appendMemory(data.videoTitle);
+  // Simpan "topik → judul" ke memory — await biar tersimpan sebelum response balik
+  await appendMemory(`${topic} → ${data.videoTitle}`);
 
   return NextResponse.json(data);
 }

@@ -5,7 +5,10 @@ import Sidebar from "../components/Sidebar";
 
 type HistoryItem = {
   id: string; title: string; status: "done" | "rendering" | "failed";
-  videoUrl?: string; runId?: number; accent: string; createdAt: string;
+  videoUrl?: string; thumbnailUrl?: string; runId?: number; accent: string; createdAt: string;
+  caption?: string; hashtags?: string[];
+  tiktokUrl?: string; instagramUrl?: string;
+  autoTikTok?: boolean; autoInstagram?: boolean; igShareToFeed?: boolean;
 };
 
 function timeAgo(iso: string) {
@@ -21,8 +24,10 @@ export default function ResultsPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [selected, setSelected] = useState<HistoryItem | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [deletingRun, setDeletingRun] = useState<string | null>(null);
   const [loadingBlob, setLoadingBlob] = useState(true);
+  const [publishing, setPublishing] = useState<"tiktok" | "instagram" | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [publishErr, setPublishErr] = useState<string | null>(null);
 
   // Resume polling untuk semua item yang masih rendering saat halaman dibuka
   const pollRun = (runId: number, itemId: string) => {
@@ -35,13 +40,19 @@ export default function ResultsPage() {
           const blobRes = await fetch("/api/blob").then(r2 => r2.json());
           const videos: { url: string; pathname: string; uploadedAt: string }[] = blobRes.videos ?? [];
           const latest = videos[0];
+          let doneItem: HistoryItem | undefined;
           setHistory(prev => {
             const updated = prev.map(h => h.id === itemId
               ? { ...h, status: "done" as const, videoUrl: latest?.url }
               : h);
+            doneItem = updated.find(h => h.id === itemId);
             localStorage.setItem("vf_history", JSON.stringify(updated));
             return updated;
           });
+          if (doneItem) {
+            if (doneItem.autoTikTok && !doneItem.tiktokUrl) publish("tiktok", doneItem);
+            if (doneItem.autoInstagram && !doneItem.instagramUrl) publish("instagram", doneItem);
+          }
         } else if (d.status === "failure" || d.status === "cancelled") {
           clearInterval(interval);
           setHistory(prev => {
@@ -73,9 +84,17 @@ export default function ResultsPage() {
             title: match?.title ?? v.pathname.replace(/^.*video-/, "video ").replace(".mp4", ""),
             status: "done" as const,
             videoUrl: v.url,
+            thumbnailUrl: match?.thumbnailUrl,
             runId: match?.runId,
             accent: match?.accent ?? "#6366f1",
             createdAt: match?.createdAt ?? v.uploadedAt,
+            caption: match?.caption,
+            hashtags: match?.hashtags,
+            tiktokUrl: match?.tiktokUrl,
+            instagramUrl: match?.instagramUrl,
+            autoTikTok: match?.autoTikTok,
+            autoInstagram: match?.autoInstagram,
+            igShareToFeed: match?.igShareToFeed,
           };
         });
 
@@ -109,38 +128,57 @@ export default function ResultsPage() {
     localStorage.setItem("vf_history", JSON.stringify(items));
   };
 
+  const captionText = (item: HistoryItem) => {
+    if (!item.caption) return "";
+    const tags = (item.hashtags ?? []).map(h => `#${h.replace(/^#/, "")}`).join(" ");
+    return tags ? `${item.caption}\n\n${tags}` : item.caption;
+  };
+
+  const copyCaption = async (item: HistoryItem) => {
+    await navigator.clipboard.writeText(captionText(item)).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+
+  const publish = async (platform: "tiktok" | "instagram", item: HistoryItem) => {
+    if (!item.videoUrl) return;
+    setPublishing(platform); setPublishErr(null);
+    try {
+      const res = await fetch("/api/publish", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setPublishErr(d.error ?? "Upload gagal"); return; }
+      const key = platform === "tiktok" ? "tiktokUrl" : "instagramUrl";
+      const updated = history.map(h => h.id === item.id ? { ...h, [key]: d.postUrl ?? "uploaded" } : h);
+      updateHistory(updated);
+      setSelected(s => s && s.id === item.id ? { ...s, [key]: d.postUrl ?? "uploaded" } : s);
+    } catch (e) {
+      setPublishErr(e instanceof Error ? e.message : "Upload gagal");
+    } finally {
+      setPublishing(null);
+    }
+  };
+
   const deleteVideo = async (item: HistoryItem) => {
     if (!confirm(`Hapus video "${item.title}"? Ini permanen.`)) return;
     setDeleting(item.id);
-    try {
-      if (item.videoUrl) {
-        await fetch("/api/blob", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: item.videoUrl }),
-        });
-      }
-      const updated = history.filter((h) => h.id !== item.id);
-      updateHistory(updated);
-      if (selected?.id === item.id) setSelected(null);
-    } catch { /* ignore */ }
-    setDeleting(null);
-  };
-
-  const deleteAction = async (item: HistoryItem) => {
-    if (!item.runId) return;
-    if (!confirm(`Hapus GitHub Action run #${item.runId}?`)) return;
-    setDeletingRun(item.id);
-    try {
-      await fetch("/api/actions", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+    // Hapus Blob + GitHub Actions run sekaligus
+    await Promise.allSettled([
+      item.videoUrl && fetch("/api/blob", {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: item.videoUrl }),
+      }),
+      item.runId && fetch("/api/actions", {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ runId: item.runId }),
-      });
-      const updated = history.map((h) => h.id === item.id ? { ...h, runId: undefined } : h);
-      updateHistory(updated);
-    } catch { /* ignore */ }
-    setDeletingRun(null);
+      }),
+    ]);
+    const updated = history.filter((h) => h.id !== item.id);
+    updateHistory(updated);
+    if (selected?.id === item.id) setSelected(null);
+    setDeleting(null);
   };
 
   const done = history.filter((h) => h.status === "done");
@@ -196,19 +234,11 @@ export default function ResultsPage() {
                       ↓ Download
                     </a>
                   )}
-                  {item.runId && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteAction(item); }}
-                      disabled={deletingRun === item.id}
-                      className="text-xs px-2 py-1 rounded-lg border border-white/[0.06] text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50">
-                      {deletingRun === item.id ? "…" : "🗑 Action"}
-                    </button>
-                  )}
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteVideo(item); }}
                     disabled={deleting === item.id}
                     className="text-xs px-2 py-1 rounded-lg border border-white/[0.06] text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50">
-                    {deleting === item.id ? "…" : "🗑 Video"}
+                    {deleting === item.id ? "…" : "🗑 Hapus"}
                   </button>
                 </div>
               </div>
@@ -239,6 +269,63 @@ export default function ResultsPage() {
                   {deleting === selected.id ? "…" : "🗑"}
                 </button>
               </div>
+
+              {/* Upload TikTok / Instagram */}
+              <div className="flex gap-3 w-full">
+                {selected.tiktokUrl ? (
+                  <a href={selected.tiktokUrl !== "uploaded" ? selected.tiktokUrl : undefined} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-green-400 border border-green-800/40 transition-colors"
+                    style={{ background: "#111113" }}>
+                    🎵 Lihat di TikTok ↗
+                  </a>
+                ) : (
+                  <button onClick={() => publish("tiktok", selected)} disabled={publishing !== null}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-zinc-300 border border-white/[0.06] hover:border-white/20 transition-colors disabled:opacity-50"
+                    style={{ background: "#111113" }}>
+                    {publishing === "tiktok" ? <span className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" /> : "🎵"}
+                    Upload TikTok
+                  </button>
+                )}
+                {selected.instagramUrl ? (
+                  <a href={selected.instagramUrl !== "uploaded" ? selected.instagramUrl : undefined} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-green-400 border border-green-800/40 transition-colors"
+                    style={{ background: "#111113" }}>
+                    📸 Lihat di Instagram ↗
+                  </a>
+                ) : (
+                  <button onClick={() => publish("instagram", selected)} disabled={publishing !== null}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-zinc-300 border border-white/[0.06] hover:border-white/20 transition-colors disabled:opacity-50"
+                    style={{ background: "#111113" }}>
+                    {publishing === "instagram" ? <span className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" /> : "📸"}
+                    Upload Instagram
+                  </button>
+                )}
+              </div>
+
+              {publishErr && <p className="text-xs text-red-400 text-center w-full">{publishErr}</p>}
+
+              {/* Caption & hashtag */}
+              {selected.caption && (
+                <div className="w-full rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "#111113" }}>
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Caption & Hashtag</p>
+                    <button onClick={() => copyCaption(selected)}
+                      className="text-xs px-3 py-1 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white transition-colors">
+                      {copied ? "✓ Tersalin" : "Copy"}
+                    </button>
+                  </div>
+                  <div className="p-4 flex flex-col gap-3">
+                    <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{selected.caption}</p>
+                    {selected.hashtags && selected.hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selected.hashtags.map((h, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-white/[0.05] text-zinc-400">#{h.replace(/^#/, "")}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-zinc-700">

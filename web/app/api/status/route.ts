@@ -21,11 +21,16 @@ export async function GET(req: NextRequest) {
   const run = await res.json();
 
   if (run.status === "completed" && run.conclusion === "success") {
-    // Find video in Vercel Blob by run ID prefix
+    // Find video + thumbnail in Vercel Blob by run ID prefix
     const { blobs } = await list({ prefix: `video-${runId}` });
     const blob = blobs[0];
     if (blob) {
-      return NextResponse.json({ status: "completed", videoUrl: blob.url });
+      const { blobs: thumbBlobs } = await list({ prefix: `thumbnail-${runId}` });
+      return NextResponse.json({
+        status: "completed",
+        videoUrl: blob.url,
+        thumbnailUrl: thumbBlobs[0]?.url ?? null,
+      });
     }
     // Blob not yet visible (eventual consistency), retry soon
     return NextResponse.json({ status: "uploading" });

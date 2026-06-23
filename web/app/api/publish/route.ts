@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const token = process.env.ZERNIO_API_KEY;
   if (!token) return NextResponse.json({ error: "ZERNIO_API_KEY not set" }, { status: 500 });
 
-  const { platform, videoUrl, caption } = await req.json();
+  const { platform, videoUrl, caption, thumbnailUrl, igShareToFeed = true } = await req.json();
   if (!platform || !videoUrl) {
     return NextResponse.json({ error: "platform & videoUrl required" }, { status: 400 });
   }
@@ -35,18 +35,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Tidak ada akun ${platform} yang terhubung di Zernio` }, { status: 400 });
     }
 
-    // Zernio: POST /posts dengan content + mediaItems[{url,type}] + platforms[{platform,accountId}].
-    // publishNow:true → publish langsung, respons berisi platformPostUrl.
-    // https://docs.zernio.com/guides/media-uploads
+    // Platform-specific options:
+    // Instagram → contentType:"reels" + instagramThumbnail (supaya masuk tab Reels bukan grid biasa)
+    // TikTok    → tiktokSettings.video_cover_image_url untuk thumbnail
+    const platformEntry =
+      platform === "instagram"
+        ? {
+            platform,
+            accountId: account._id,
+            platformSpecificData: {
+              contentType: "reels",
+              shareToFeed: igShareToFeed,
+              ...(thumbnailUrl ? { instagramThumbnail: thumbnailUrl } : { thumbOffset: 0 }),
+            },
+          }
+        : { platform, accountId: account._id };
+
+    const body: Record<string, unknown> = {
+      content: caption ?? "",
+      mediaItems: [{ url: videoUrl, type: "video" }],
+      platforms: [platformEntry],
+      publishNow: true,
+    };
+
+    if (platform === "tiktok") {
+      body.tiktokSettings = {
+        privacy_level: "PUBLIC_TO_EVERYONE",
+        allow_comment: true,
+        allow_duet: true,
+        allow_stitch: true,
+        content_preview_confirmed: true,
+        express_consent_given: true,
+        ...(thumbnailUrl ? { video_cover_image_url: thumbnailUrl } : {}),
+      };
+    }
+
     const res = await fetch(`${ZERNIO_BASE}/posts`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: caption ?? "",
-        mediaItems: [{ url: videoUrl, type: "video" }],
-        platforms: [{ platform, accountId: account._id }],
-        publishNow: true,
-      }),
+      body: JSON.stringify(body),
     });
 
     const text = await res.text();
