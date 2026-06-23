@@ -18,10 +18,30 @@ export async function POST(req: NextRequest) {
   const token = process.env.ZERNIO_API_KEY;
   if (!token) return NextResponse.json({ error: "ZERNIO_API_KEY not set" }, { status: 500 });
 
-  const { platform, videoUrl, caption, thumbnailUrl, igShareToFeed = true } = await req.json();
-  if (!platform || !videoUrl) {
-    return NextResponse.json({ error: "platform & videoUrl required" }, { status: 400 });
-  }
+  const body = await req.json();
+  const {
+    platform,
+    // video
+    videoUrl,
+    thumbnailUrl,
+    igShareToFeed = true,
+    // image / carousel
+    imageUrl,
+    imageUrls,   // string[] — carousel slides in order
+    mediaType,   // "video" | "image" | "carousel"
+    caption,
+  } = body;
+
+  const resolvedMediaType: "video" | "image" | "carousel" =
+    mediaType ?? (videoUrl ? "video" : imageUrls?.length > 1 ? "carousel" : "image");
+
+  if (!platform) return NextResponse.json({ error: "platform required" }, { status: 400 });
+  if (resolvedMediaType === "video" && !videoUrl)
+    return NextResponse.json({ error: "videoUrl required for video" }, { status: 400 });
+  if (resolvedMediaType === "image" && !imageUrl)
+    return NextResponse.json({ error: "imageUrl required for image" }, { status: 400 });
+  if (resolvedMediaType === "carousel" && (!imageUrls || imageUrls.length < 2))
+    return NextResponse.json({ error: "imageUrls (min 2) required for carousel" }, { status: 400 });
 
   try {
     const accounts = await getAccounts(token);
@@ -30,45 +50,59 @@ export async function POST(req: NextRequest) {
       return platform === "tiktok" ? p === "tiktok"
         : p === "instagram" || p === "instagram_business";
     });
-
     if (!account) {
       return NextResponse.json({ error: `Tidak ada akun ${platform} yang terhubung di Zernio` }, { status: 400 });
     }
 
-    // Platform-specific options:
-    // Instagram → contentType:"reels" + instagramThumbnail (supaya masuk tab Reels bukan grid biasa)
-    // TikTok    → tiktokSettings.video_cover_image_url untuk thumbnail
-    const platformEntry =
-      platform === "instagram"
-        ? {
-            platform,
-            accountId: account._id,
-            platformSpecificData: {
-              contentType: "reels",
-              shareToFeed: igShareToFeed,
-              // thumbOffset 3000ms = detik 3, konten sudah visible (bukan fade-in gelap)
-              ...(thumbnailUrl ? { instagramThumbnail: thumbnailUrl } : { thumbOffset: 3000 }),
-            },
-          }
-        : { platform, accountId: account._id };
+    // ── Build mediaItems ────────────────────────────────────────────────────────
+    let mediaItems: { url: string; type: string; order?: number }[];
 
-    const body: Record<string, unknown> = {
+    if (resolvedMediaType === "video") {
+      mediaItems = [{ url: videoUrl, type: "video" }];
+    } else if (resolvedMediaType === "carousel") {
+      // Urutan dijaga lewat field `order` + array order
+      mediaItems = (imageUrls as string[]).map((url, i) => ({ url, type: "image", order: i }));
+    } else {
+      mediaItems = [{ url: imageUrl, type: "image" }];
+    }
+
+    // ── Build platform entry ────────────────────────────────────────────────────
+    let platformSpecificData: Record<string, unknown> = {};
+
+    if (platform === "instagram") {
+      if (resolvedMediaType === "video") {
+        platformSpecificData = {
+          contentType: "reels",
+          shareToFeed: igShareToFeed,
+          ...(thumbnailUrl ? { instagramThumbnail: thumbnailUrl } : { thumbOffset: 3000 }),
+        };
+      } else if (resolvedMediaType === "carousel") {
+        platformSpecificData = { contentType: "carousel", shareToFeed: true };
+      } else {
+        platformSpecificData = { contentType: "feed", shareToFeed: true };
+      }
+    }
+
+    const platformEntry =
+      platform === "tiktok"
+        ? { platform, accountId: account._id }
+        : { platform, accountId: account._id, platformSpecificData };
+
+    const postBody: Record<string, unknown> = {
       content: caption ?? "",
-      mediaItems: [{ url: videoUrl, type: "video" }],
+      mediaItems,
       platforms: [platformEntry],
       publishNow: true,
     };
 
-    if (platform === "tiktok") {
-      body.tiktokSettings = {
+    if (platform === "tiktok" && resolvedMediaType === "video") {
+      postBody.tiktokSettings = {
         privacy_level: "PUBLIC_TO_EVERYONE",
         allow_comment: true,
         allow_duet: true,
         allow_stitch: true,
         content_preview_confirmed: true,
         express_consent_given: true,
-        // video_cover_timestamp_ms: pilih frame detik 3 (3000ms) — konten intro sudah visible
-        // video_cover_image_url: sebagai fallback kalau Zernio support external URL
         video_cover_timestamp_ms: 3000,
         ...(thumbnailUrl ? { video_cover_image_url: thumbnailUrl } : {}),
       };
@@ -77,7 +111,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(`${ZERNIO_BASE}/posts`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(postBody),
     });
 
     const text = await res.text();
@@ -86,14 +120,10 @@ export async function POST(req: NextRequest) {
     let data: Record<string, unknown> = {};
     try { data = JSON.parse(text); } catch { /* non-json ok */ }
 
-    // Cari link post — respons immediate punya platformPostUrl (bisa nested di platforms[])
     const platformsArr = (data.platforms ?? data.results) as Array<Record<string, unknown>> | undefined;
     const postUrl =
-      (data.platformPostUrl
-        ?? data.postUrl
-        ?? data.url
-        ?? platformsArr?.[0]?.platformPostUrl
-        ?? platformsArr?.[0]?.url) as string | undefined;
+      (data.platformPostUrl ?? data.postUrl ?? data.url
+        ?? platformsArr?.[0]?.platformPostUrl ?? platformsArr?.[0]?.url) as string | undefined;
 
     return NextResponse.json({ ok: true, postUrl: postUrl ?? null, account: account.username ?? account.name });
   } catch (e) {

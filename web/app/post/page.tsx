@@ -30,11 +30,37 @@ function SlideCounter({ current, total, ac }: { current: number; total: number; 
   );
 }
 
+function WatermarkOverlay({ handle, logoUrl }: { handle?: string; logoUrl?: string | null }) {
+  return (
+    <>
+      {logoUrl && (
+        <div style={{
+          position: "absolute", top: 10, left: 10, zIndex: 3,
+          background: "rgba(255,255,255,0.88)", borderRadius: 6, padding: "3px 6px",
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="" style={{ height: 14, width: "auto", maxWidth: 40, objectFit: "contain", display: "block" }} />
+        </div>
+      )}
+      {handle && (
+        <div style={{
+          position: "absolute", bottom: 10, right: 12, zIndex: 3,
+          background: "rgba(255,255,255,0.88)", borderRadius: 8, padding: "2px 7px",
+        }}>
+          <span style={{ fontSize: 8, fontWeight: 700, color: "#18181b" }}>{handle}</span>
+        </div>
+      )}
+    </>
+  );
+}
+
 function PostPreview({
   data, postType, slideIndex, imageUrl, carouselSlides,
+  watermarkHandle, watermarkLogoUrl,
 }: {
   data: PostData; postType: PostType; slideIndex: number;
   imageUrl?: string | null; carouselSlides?: string[];
+  watermarkHandle?: string; watermarkLogoUrl?: string | null;
 }) {
   const ac = data.accent || "#6366f1";
   const tips = data.tips.slice(0, 5);
@@ -106,10 +132,7 @@ function PostPreview({
             <span style={{ fontSize: 10, fontWeight: 800, color: "white" }}>{data.ctaText}</span>
           </div>
         </div>
-        {/* WM handle bottom-right */}
-        <div style={{ position: "absolute", bottom: 10, right: 12, zIndex: 2 }}>
-          <span style={{ fontSize: 8, fontWeight: 700, color: "#18181b", background: "rgba(255,255,255,0.85)", borderRadius: 8, padding: "2px 6px" }}>@creavoo.id</span>
-        </div>
+        <WatermarkOverlay handle={watermarkHandle} logoUrl={watermarkLogoUrl} />
       </div>
     );
   }
@@ -165,9 +188,7 @@ function PostPreview({
         {renderCarouselSlide()}
       </div>
       <SlideCounter current={slideIndex + 1} total={totalSlides} ac={ac} />
-      <div style={{ position: "absolute", bottom: 10, right: 12, zIndex: 2 }}>
-        <span style={{ fontSize: 8, fontWeight: 700, color: "#18181b", background: "rgba(255,255,255,0.85)", borderRadius: 8, padding: "2px 6px" }}>@creavoo.id</span>
-      </div>
+      <WatermarkOverlay handle={watermarkHandle} logoUrl={watermarkLogoUrl} />
     </div>
   );
 }
@@ -426,6 +447,7 @@ export default function PostPage() {
                   <PostPreview
                     data={postData} postType={postType} slideIndex={slideIndex}
                     imageUrl={imageUrl} carouselSlides={carouselSlides.length ? carouselSlides : undefined}
+                    watermarkHandle={watermarkHandle} watermarkLogoUrl={watermarkLogoUrl}
                   />
 
                   {/* Carousel slide nav */}
