@@ -217,14 +217,17 @@ export default function ResultsPage() {
     if (item.imageUrl) blobUrls.push(item.imageUrl);
     if (item.imageUrls?.length) blobUrls.push(...item.imageUrls);
 
+    // Fallback: extract runId from id (e.g. "img-28038739195")
+    const resolvedRunId = item.runId ?? (item.id.match(/^img-(\d+)$/) ? Number(item.id.match(/^img-(\d+)$/)![1]) : null);
+
     await Promise.allSettled([
       blobUrls.length && fetch("/api/blob", {
         method: "DELETE", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ urls: blobUrls }),
       }),
-      item.runId && fetch("/api/actions", {
+      resolvedRunId && fetch("/api/actions", {
         method: "DELETE", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId: item.runId }),
+        body: JSON.stringify({ runId: resolvedRunId }),
       }),
     ]);
 

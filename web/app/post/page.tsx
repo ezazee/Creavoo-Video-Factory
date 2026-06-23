@@ -234,6 +234,7 @@ export default function PostPage() {
     if (!data || !rId) return;
     const item = {
       id: `img-${rId}`, title: data.videoTitle, status: "done",
+      runId: rId,
       accent: data.accent ?? "#6366f1", createdAt: new Date().toISOString(),
       caption: data.caption, hashtags: data.hashtags,
       mediaType, imageUrl: imgUrl, imageUrls: imgUrls,
