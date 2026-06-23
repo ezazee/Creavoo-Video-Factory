@@ -31,12 +31,39 @@ export async function GET(req: NextRequest) {
     number: s.number,
   }));
 
+  // Try to get frame progress from render step logs
+  let renderFrame: number | null = null;
+  let renderTotal: number | null = null;
+  const renderStep = steps.find((s: { name: string; status: string }) =>
+    s.name === "Render video with Remotion" && s.status === "in_progress"
+  );
+  if (renderStep && job?.id) {
+    try {
+      const logsRes = await fetch(
+        `https://api.github.com/repos/${REPO}/actions/jobs/${job.id}/logs`,
+        { headers: GH_HEADERS, redirect: "follow" }
+      );
+      if (logsRes.ok) {
+        const logs = await logsRes.text();
+        // Remotion logs: "Rendering frame 23/2406"  or  "23/2406"
+        const matches = [...logs.matchAll(/(\d+)\/(\d+)/g)];
+        if (matches.length) {
+          const last = matches[matches.length - 1];
+          renderFrame = parseInt(last[1]);
+          renderTotal = parseInt(last[2]);
+        }
+      }
+    } catch { /* non-blocking */ }
+  }
+
   return NextResponse.json({
     status: run.status,
     conclusion: run.conclusion,
     steps,
     htmlUrl: run.html_url,
     runStartedAt: run.run_started_at,
+    renderFrame,
+    renderTotal,
   });
 }
 

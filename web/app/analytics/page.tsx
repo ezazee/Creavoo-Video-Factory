@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Sidebar from "../components/Sidebar";
 import {
   LineChart,
   Line,
@@ -55,7 +55,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col gap-1">
+    <div className="border border-white/[0.06] rounded-xl p-4 flex flex-col gap-1" style={{ background: "#111113" }}>
       <p className="text-xs text-zinc-500 font-medium">{label}</p>
       <p className="text-2xl font-black text-white">{value}</p>
       {sub && <p className="text-xs text-zinc-600">{sub}</p>}
@@ -120,39 +120,18 @@ export default function AnalyticsPage() {
       : [];
 
   return (
-    <div className="flex h-screen bg-zinc-950 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 flex flex-col border-r border-zinc-800 bg-zinc-900">
-        <div className="p-5 border-b border-zinc-800">
-          <h1 className="text-base font-black text-white">Video Factory</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">Dev shorts generator</p>
-        </div>
-
-        <nav className="flex flex-col gap-1 p-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-          >
-            <span className="text-base">🎬</span> Generate
-          </Link>
-          <Link
-            href="/analytics"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white bg-zinc-800 font-medium"
-          >
-            <span className="text-base">📊</span> Analytics
-          </Link>
-        </nav>
-      </aside>
+    <div className="flex h-screen bg-[#0a0a0a] overflow-hidden text-white">
+      <Sidebar />
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 overflow-y-auto p-8 text-white">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-black text-white">Analytics</h2>
             <p className="text-xs text-zinc-500 mt-0.5">Performa konten via Zernio</p>
           </div>
-          <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1">
+          <div className="flex gap-1 border border-white/[0.06] rounded-lg p-1" style={{ background: "#111113" }}>
             {DAYS_OPTIONS.map((d) => (
               <button
                 key={d}
@@ -217,7 +196,7 @@ export default function AnalyticsPage() {
             {/* Platform cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {/* TikTok */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+              <div className="border border-white/[0.06] rounded-2xl p-5" style={{ background: "#111113" }}>
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-lg">🎵</span>
                   <p className="font-bold text-white">TikTok</p>
@@ -258,7 +237,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Instagram */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+              <div className="border border-white/[0.06] rounded-2xl p-5" style={{ background: "#111113" }}>
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-lg">📸</span>
                   <p className="font-bold text-white">Instagram</p>
@@ -315,7 +294,7 @@ export default function AnalyticsPage() {
                       />
                       <YAxis tick={{ fill: "#52525b", fontSize: 10 }} tickFormatter={fmt} />
                       <Tooltip
-                        contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 12 }}
+                        contentStyle={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 8, fontSize: 12 }}
                         labelStyle={{ color: "#a1a1aa" }}
                         itemStyle={{ color: "#e4e4e7" }}
                         formatter={(v: number) => fmt(v)}
@@ -332,7 +311,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Donut chart */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+              <div className="border border-white/[0.06] rounded-2xl p-5" style={{ background: "#111113" }}>
                 <p className="font-bold text-white text-sm mb-1">Distribusi Posts</p>
                 <p className="text-xs text-zinc-500 mb-4">{(totalPosts ?? 0)} posts total</p>
                 {distData.length > 0 && totalPosts ? (
@@ -355,7 +334,7 @@ export default function AnalyticsPage() {
                         formatter={(v) => <span style={{ color: "#a1a1aa", fontSize: 12 }}>{v}</span>}
                       />
                       <Tooltip
-                        contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 12 }}
+                        contentStyle={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 8, fontSize: 12 }}
                         formatter={(v: number, name: string) => [`${v} posts`, name]}
                       />
                     </PieChart>
@@ -377,7 +356,7 @@ export default function AnalyticsPage() {
                   ].map(({ name, rate, color }) => (
                     <div key={name} className="flex items-center gap-4">
                       <p className="text-sm text-zinc-300 w-24 flex-shrink-0">{name}</p>
-                      <div className="flex-1 bg-zinc-800 rounded-full h-2">
+                      <div className="flex-1 rounded-full h-2" style={{ background: "#ffffff10" }}>
                         <div
                           className="h-2 rounded-full transition-all"
                           style={{ width: rate ? `${Math.min(rate, 100)}%` : "0%", background: color }}

@@ -9,7 +9,7 @@ export const Watermark: React.FC<{
   handle?: string;
   avatarFile?: string;
   position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
-}> = ({ handle = "@yourhandle", avatarFile, position = "top-right" }) => {
+}> = ({ handle = "", avatarFile, position = "top-right" }) => {
   const positionStyles: Record<string, React.CSSProperties> = {
     "bottom-right": {
       alignItems: "flex-end",
@@ -33,6 +33,8 @@ export const Watermark: React.FC<{
     },
   };
 
+  if (!handle && !avatarFile) return null;
+
   return (
     <AbsoluteFill
       style={{
@@ -52,9 +54,11 @@ export const Watermark: React.FC<{
             className="h-12 w-12 rounded-full object-cover"
           />
         )}
-        <span className="font-mono text-3xl font-bold tracking-tight text-white">
-          {handle}
-        </span>
+        {handle && (
+          <span className="font-mono text-3xl font-bold tracking-tight text-white">
+            {handle}
+          </span>
+        )}
       </div>
     </AbsoluteFill>
   );

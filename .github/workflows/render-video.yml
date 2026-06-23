@@ -101,9 +101,20 @@ jobs:
       - name: Render video with Remotion
         run: |
           PROPS=$(python - <<'PYEOF'
-          import json, os
+          import json, os, urllib.request
           props = json.loads(os.environ["PROPS_JSON"])
           props["sceneDurations"] = []
+
+          # Download watermark logo jika ada
+          logo_url = props.pop("watermarkLogoUrl", None)
+          if logo_url:
+              import pathlib
+              ext = logo_url.split(".")[-1].split("?")[0] or "png"
+              dest = pathlib.Path(f"public/watermark-logo.{ext}")
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              urllib.request.urlretrieve(logo_url, dest)
+              props["watermarkLogo"] = f"watermark-logo.{ext}"
+
           print(json.dumps(props))
           PYEOF
           )

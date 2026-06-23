@@ -31,8 +31,12 @@ export async function GET(req: NextRequest) {
   try {
     // Fetch connected accounts first to get accountIds
     const accountsRes = await zernio("/accounts", token);
+    console.log("[analytics] accountsRes keys:", Object.keys(accountsRes ?? {}));
     const accounts: { _id: string; platform: string; username?: string; name?: string }[] =
-      accountsRes?.data ?? accountsRes ?? [];
+      Array.isArray(accountsRes) ? accountsRes
+      : Array.isArray(accountsRes?.data) ? accountsRes.data
+      : Array.isArray(accountsRes?.accounts) ? accountsRes.accounts
+      : [];
 
     const tiktokAccount = accounts.find((a) => a.platform?.toLowerCase() === "tiktok");
     const igAccount = accounts.find(
@@ -61,6 +65,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (e) {
+    console.error("[analytics]", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }

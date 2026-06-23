@@ -30,6 +30,8 @@ export type GeneratedVideoProps = {
   tips: TipData[];
   ctaText: string;
   layout?: VideoLayout;
+  watermarkHandle?: string;
+  watermarkLogo?: string; // filename di public/, e.g. "logo.png"
 };
 
 export const DEFAULT_ACCENT = "#6366f1";
@@ -51,6 +53,8 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   tips,
   ctaText,
   layout = "center",
+  watermarkHandle = "",
+  watermarkLogo,
 }) => {
   const TipComponent = TIP_SCENE_MAP[layout] ?? TipScene;
   const durations =
@@ -119,7 +123,8 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
           </Sequence>
         ))}
 
-      <Watermark handle="@yourhandle" />
+      {watermarkLogo && <Watermark handle="" avatarFile={watermarkLogo} position="top-left" />}
+      <Watermark handle={watermarkHandle} position="top-right" />
     </AbsoluteFill>
   );
 };

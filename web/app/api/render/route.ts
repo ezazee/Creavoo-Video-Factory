@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const { scenes, videoTitle, subtitle, introEmoji, accent, tips, ctaText, voice, layout } = body;
+  const { scenes, videoTitle, subtitle, introEmoji, accent, tips, ctaText, voice, layout, watermarkHandle, watermarkLogoUrl } = body;
 
   const [owner, repo] = (process.env.GITHUB_REPO ?? "").split("/");
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
         ref: "main",
         inputs: {
           scenes_json: JSON.stringify(scenes),
-          props_json: JSON.stringify({ videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout: layout ?? "center" }),
+          props_json: JSON.stringify({ videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout: layout ?? "center", watermarkHandle: watermarkHandle ?? "", watermarkLogoUrl: watermarkLogoUrl ?? null }),
           voice: voice ?? process.env.TTS_VOICE ?? "id-ID-ArdiNeural",
         },
       }),
