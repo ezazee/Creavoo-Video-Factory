@@ -17,11 +17,7 @@ type SceneData = {
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 
-type ELVoice = { id: string; label: string; desc: string; previewUrl?: string | null };
-const EL_VOICES_FALLBACK: ELVoice[] = [
-  { id: "pNInz6obpgDQGcFmaJgB", label: "Adam", desc: "Deep · Narrative" },
-];
-const FREE_VOICES = [
+const VOICES = [
   { id: "id-ID-ArdiNeural", label: "Ardi", desc: "Indo · Male", flag: "🇮🇩" },
   { id: "id-ID-GadisNeural", label: "Gadis", desc: "Indo · Female", flag: "🇮🇩" },
 ];
@@ -47,7 +43,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [useKnowledge, setUseKnowledge] = useState(true);
-  const [voice, setVoice] = useState("pNInz6obpgDQGcFmaJgB");
+  const [voice, setVoice] = useState("id-ID-ArdiNeural");
   const [step, setStep] = useState<Step>("idle");
   const [preview, setPreview] = useState<SceneData | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -59,17 +55,14 @@ export default function Home() {
   const [renderFrame, setRenderFrame] = useState<number | null>(null);
   const [renderTotal, setRenderTotal] = useState<number | null>(null);
   const [cancelingRun, setCancelingRun] = useState(false);
-  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [trendTopics, setTrendTopics] = useState<string[]>([]);
   const [loadingTrends, setLoadingTrends] = useState(false);
-  const [elVoices, setElVoices] = useState<ELVoice[]>(EL_VOICES_FALLBACK);
   const [autoTikTok, setAutoTikTok] = useState(false);
   const [autoInstagram, setAutoInstagram] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   const saveWatermark = async (handle: string, logoUrl: string | null) => {
@@ -111,9 +104,6 @@ export default function Home() {
       pollStatus(latest.id, latest.runId!);
     }
 
-    fetch("/api/voices").then(r => r.json()).then(d => {
-      if (d.voices?.length > 0) { setElVoices(d.voices); setVoice(d.voices[0].id); }
-    }).catch(() => {});
   }, []); // ponytail: eslint-disable-line — pollStatus stabil, tidak perlu di deps
 
   const saveHistory = (items: HistoryItem[]) => {
@@ -150,28 +140,6 @@ export default function Home() {
     setLoadingTrends(false);
   };
 
-  const playVoicePreview = async (voiceId: string, previewUrl?: string | null) => {
-    if (playingVoice === voiceId) {
-      audioRef.current?.pause(); setPlayingVoice(null); return;
-    }
-    setPlayingVoice(voiceId);
-    try {
-      let url: string;
-      if (previewUrl) {
-        url = previewUrl;
-      } else {
-        const res = await fetch("/api/voice-preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ voiceId }) });
-        if (!res.ok) throw new Error();
-        url = URL.createObjectURL(await res.blob());
-      }
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.play();
-      audio.onended = () => setPlayingVoice(null);
-      audio.onerror = () => setPlayingVoice(null);
-    } catch { setPlayingVoice(null); }
-  };
 
   const generate = async () => {
     if (!topic.trim()) return;
@@ -261,7 +229,7 @@ export default function Home() {
   };
 
   const activeItem = history.find((h) => h.id === activeId);
-  const selectedVoiceLabel = [...elVoices, ...FREE_VOICES].find(v => v.id === voice)?.label ?? "Pilih Voice";
+  const selectedVoiceLabel = VOICES.find(v => v.id === voice)?.label ?? "Pilih Voice";
   const accentColor = "#00AEEF";
 
   return (
@@ -340,40 +308,15 @@ export default function Home() {
                   </button>
                 </div>
                 {showVoice && (
-                  <div className="mt-3 flex flex-col gap-3">
-                    <div>
-                      <p className="text-[10px] text-zinc-600 mb-2">ElevenLabs · Recommended</p>
-                      <div className="flex flex-wrap gap-2">
-                        {elVoices.map((v) => (
-                          <div key={v.id} onClick={() => setVoice(v.id)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all"
-                            style={{ borderColor: voice === v.id ? "#6366f1" : "transparent", background: voice === v.id ? "#6366f115" : "#ffffff07" }}>
-                            <div>
-                              <p className="text-[10px] text-zinc-500">🇺🇸 {v.desc}</p>
-                              <p className="text-sm font-bold">{v.label}</p>
-                            </div>
-                            <button onClick={(e) => { e.stopPropagation(); playVoicePreview(v.id, v.previewUrl); }}
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-colors"
-                              style={{ background: playingVoice === v.id ? "#6366f1" : "#27272a" }}>
-                              {playingVoice === v.id ? "⏸" : "▶"}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-zinc-600 mb-2">Edge TTS · Free</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {FREE_VOICES.map((v) => (
-                          <button key={v.id} onClick={() => setVoice(v.id)}
-                            className="px-3 py-2 rounded-xl border transition-all"
-                            style={{ borderColor: voice === v.id ? "#6366f1" : "transparent", background: voice === v.id ? "#6366f115" : "#ffffff07" }}>
-                            <p className="text-[10px] text-zinc-500">{v.flag} {v.desc}</p>
-                            <p className="text-sm font-bold">{v.label}</p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="mt-3 flex gap-2 flex-wrap">
+                    {VOICES.map((v) => (
+                      <button key={v.id} onClick={() => setVoice(v.id)}
+                        className="px-4 py-2.5 rounded-xl border text-left transition-all"
+                        style={{ borderColor: voice === v.id ? "#00AEEF" : "transparent", background: voice === v.id ? "#00AEEF15" : "#ffffff07" }}>
+                        <p className="text-[10px] text-zinc-500">{v.flag} {v.desc}</p>
+                        <p className="text-sm font-bold">{v.label}</p>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>

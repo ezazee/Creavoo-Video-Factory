@@ -37,40 +37,24 @@ jobs:
         run: npm ci
 
       - name: Install Python deps
-        run: pip install edge-tts requests
+        run: pip install edge-tts
 
       - name: Generate voiceover MP3s
         run: |
           python - <<'PYEOF'
-          import asyncio, json, os, sys, requests
+          import asyncio, json, os, re
           from pathlib import Path
 
           scenes = json.loads(os.environ["SCENES_JSON"])
           voice  = os.environ.get("VOICE", "id-ID-ArdiNeural")
-          el_key = os.environ.get("ELEVENLABS_API_KEY", "")
           out_dir = Path("public/voiceover/generated")
           out_dir.mkdir(parents=True, exist_ok=True)
 
-          # edge-tts voices follow pattern "xx-XX-NeuralName" (e.g. id-ID-ArdiNeural)
-          import re
-          is_edge_tts_voice = bool(re.match(r'^[a-z]{2}-[A-Z]{2}-', voice))
-          use_elevenlabs = bool(el_key) and not is_edge_tts_voice
-
-          def gen_elevenlabs(text, voice_id, out_file):
-              res = requests.post(
-                  f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-                  headers={"xi-api-key": el_key, "Content-Type": "application/json"},
-                  json={
-                      "text": text,
-                      "model_id": "eleven_multilingual_v2",
-                      "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
-                  },
-                  timeout=60,
-              )
-              if not res.ok:
-                  raise RuntimeError(f"ElevenLabs error {res.status_code}: {res.text[:200]}")
-              with open(str(out_file), "wb") as f:
-                  f.write(res.content)
+          # Selalu pakai edge-tts (gratis, konsisten, tidak pernah kehabisan quota).
+          # Kalau voice yang dikirim bukan edge-tts (mis. voice ID ElevenLabs lama),
+          # paksa ke default Indonesia biar suara selalu ada dan seragam.
+          if not re.match(r'^[a-z]{2}-[A-Z]{2}-', voice):
+              voice = "id-ID-ArdiNeural"
 
           async def gen_edgetts(text, voice_name, out_file):
               import edge_tts
@@ -78,25 +62,17 @@ jobs:
               await communicate.save(str(out_file))
 
           async def main():
+              print(f"Voice engine: edge-tts (voice={voice})")
               for scene in scenes:
-                  out_file = out_dir / f"{scene['id']}.mp3"
-                  print(f"→ generating {scene['id']} ({('ElevenLabs' if use_elevenlabs else 'edge-tts')}) …")
-                  if use_elevenlabs:
-                      try:
-                          gen_elevenlabs(scene["text"], voice, out_file)
-                      except Exception as e:
-                          print(f"  ElevenLabs failed ({e}), falling back to edge-tts")
-                          await gen_edgetts(scene["text"], "id-ID-ArdiNeural", out_file)
-                  else:
-                      await gen_edgetts(scene["text"], voice, out_file)
-                  print(f"✓ {out_file}")
+                  print(f"→ edge-tts {scene['id']} …")
+                  await gen_edgetts(scene["text"], voice, out_dir / f"{scene['id']}.mp3")
+                  print(f"✓ {scene['id']}")
 
           asyncio.run(main())
           PYEOF
         env:
           SCENES_JSON: ${{ inputs.scenes_json }}
           VOICE: ${{ inputs.voice }}
-          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
 
       - name: Render video with Remotion
         run: |
