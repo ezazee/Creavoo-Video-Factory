@@ -212,6 +212,7 @@ export default function PostPage() {
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishUrl, setPublishUrl] = useState<string | null>(null);
+  const [published, setPublished] = useState(false);
 
   const totalSlides = (postData?.tips.slice(0, 5).length ?? 5) + 2;
 
@@ -273,7 +274,7 @@ export default function PostPage() {
 
   const render = async () => {
     if (!postData) return;
-    setStep("rendering"); setError(null); setImageUrl(null); setCarouselSlides([]);
+    setStep("rendering"); setError(null); setImageUrl(null); setCarouselSlides([]); setPublished(false); setPublishUrl(null);
     try {
       const res = await fetch("/api/render-image", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -301,6 +302,7 @@ export default function PostPage() {
       });
       const d = await res.json();
       if (d.postUrl) setPublishUrl(d.postUrl);
+      setPublished(true);
     } catch { /* ignore */ }
     setPublishing(false);
   };
@@ -501,12 +503,19 @@ export default function PostPage() {
                         </a>
                       ) : null}
 
-                      {publishUrl ? (
-                        <a href={publishUrl} target="_blank" rel="noopener noreferrer"
-                          className="py-2.5 rounded-xl font-bold text-sm text-center border border-white/10"
-                          style={{ background: "#ffffff08", color: "#22c55e" }}>
-                          ✓ Posted ke Instagram
-                        </a>
+                      {published ? (
+                        publishUrl ? (
+                          <a href={publishUrl} target="_blank" rel="noopener noreferrer"
+                            className="py-2.5 rounded-xl font-bold text-sm text-center flex items-center justify-center gap-2"
+                            style={{ background: "linear-gradient(135deg,#E1306C,#F77737)", color: "white" }}>
+                            📸 Lihat di Instagram ↗
+                          </a>
+                        ) : (
+                          <div className="py-2.5 rounded-xl font-bold text-sm text-center"
+                            style={{ background: "#22c55e20", color: "#22c55e", border: "1px solid #22c55e40" }}>
+                            ✓ Berhasil diposting ke Instagram
+                          </div>
+                        )
                       ) : (
                         <button onClick={publishToInstagram} disabled={publishing}
                           className="py-2.5 rounded-xl font-bold text-white text-sm disabled:opacity-50 flex items-center justify-center gap-2"
