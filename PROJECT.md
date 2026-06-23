@@ -8,7 +8,7 @@
 
 Web app untuk generate **short-form video vertikal (1080×1920, 30fps)** secara otomatis dari satu topik teks.
 
-User ketik topik → AI tulis script → GitHub Actions render video pakai Remotion + ElevenLabs → video MP4 tersimpan di Vercel Blob → bisa didownload/diposting ke TikTok/Reels/Shorts.
+User ketik topik → AI tulis script → GitHub Actions render video pakai Remotion + edge-tts → video MP4 tersimpan di Vercel Blob → bisa didownload / diposting ke TikTok & Instagram Reels.
 
 **Owner:** Creavoo (`creavoo.com`) — platform AI social media growth untuk creator Indonesia.
 
@@ -21,12 +21,13 @@ User ketik topik → AI tulis script → GitHub Actions render video pakai Remot
 | Layer | Tech |
 |---|---|
 | Web UI | Next.js 15 App Router, Tailwind CSS, `"use client"` |
-| AI Script | Creavoo AI API (OpenAI-compatible endpoint) |
-| TTS | ElevenLabs (primary) + edge-tts Python (free fallback) |
+| AI Script | Creavoo AI API (OpenAI-compatible, model `creavoo-combo`) |
+| TTS | edge-tts Python (gratis, konsisten — ElevenLabs dihapus) |
 | Render | GitHub Actions (Ubuntu, Node 20) — gratis ~285 render/bulan |
 | Video Engine | Remotion 4.x (`npx remotion render`) |
-| Storage | Vercel Blob (public MP4) |
-| Analytics | Zernio API (TikTok + Instagram) |
+| Storage | Vercel Blob (MP4 + thumbnail JPG + settings + memory) |
+| Social Publish | Zernio API (TikTok + Instagram) |
+| Analytics | Zernio API |
 | Deploy | Vercel (web app) |
 
 ---
@@ -34,24 +35,27 @@ User ketik topik → AI tulis script → GitHub Actions render video pakai Remot
 ## Alur Lengkap
 
 ```
-User → ketik topik + pilih template + pilih voice
+User → ketik topik → pilih voice + toggle knowledge/auto-upload/share-to-feed
   ↓
-/api/trends   — baca creavoo-knowledge.md → scrape Google Trends ID → AI suggest 6 topik
+/api/trends   — baca creavoo-knowledge.md → AI suggest 6 topik trending
   ↓
-/api/generate — baca creavoo-knowledge.md → AI generate JSON script (7 scenes, 5 tips, visual per tip)
+/api/generate — baca knowledge (opsional) + baca memory Blob → AI generate JSON script
+               → simpan "topik → judul" ke Blob memory (memory/history.json)
   ↓
 /api/render   — trigger GitHub Actions workflow_dispatch
   ↓
 GitHub Actions:
   1. checkout repo
-  2. install deps (npm ci + pip install edge-tts requests)
-  3. generate MP3 voiceover per scene (ElevenLabs atau edge-tts)
+  2. npm ci + pip install edge-tts
+  3. generate MP3 voiceover per scene (edge-tts, selalu id-ID-ArdiNeural atau GadisNeural)
   4. npx remotion render GeneratedVideo out/video.mp4
-  5. upload ke Vercel Blob → video-{runId}.mp4
+  5. ffmpeg extract frame detik ke-1 → out/thumbnail.jpg
+  6. upload video ke Blob → video-{runId}.mp4
+  7. upload thumbnail ke Blob → thumbnail-{runId}.jpg
   ↓
-/api/status   — poll setiap 15 detik, cek run status + video URL di Blob
+/api/status   — poll setiap 15 detik, return videoUrl + thumbnailUrl
   ↓
-Done → tampil video player + download button
+Done → video player + download + upload TikTok/Instagram + caption & hashtag
 ```
 
 ---
@@ -59,7 +63,7 @@ Done → tampil video player + download button
 ## Struktur File Penting
 
 ```
-remotion-shorts-template/
+Creavoo-Video-Factory/
 ├── PROJECT.md                        ← file ini
 ├── web/                              ← Next.js app (deploy ke Vercel)
 │   ├── app/
@@ -67,13 +71,15 @@ remotion-shorts-template/
 │   │   ├── results/page.tsx          ← list semua video history
 │   │   ├── analytics/page.tsx        ← dashboard analytics Zernio
 │   │   └── api/
-│   │       ├── generate/route.ts     ← AI script generation
+│   │       ├── generate/route.ts     ← AI script generation + memory
 │   │       ├── render/route.ts       ← trigger GitHub Actions
-│   │       ├── status/route.ts       ← poll render status + blob URL
-│   │       ├── actions/route.ts      ← GET job steps / DELETE run
-│   │       ├── blob/route.ts         ← DELETE video dari Vercel Blob
-│   │       ├── voices/route.ts       ← list ElevenLabs voices
-│   │       ├── voice-preview/route.ts← preview suara ElevenLabs
+│   │       ├── status/route.ts       ← poll render status, return videoUrl + thumbnailUrl
+│   │       ├── actions/route.ts      ← GET job steps + frame progress / DELETE run
+│   │       ├── blob/route.ts         ← GET list videos / DELETE video dari Blob
+│   │       ├── watermark/route.ts    ← GET/POST settings/watermark.json di Blob
+│   │       ├── memory/route.ts       ← DELETE memory/history.json (reset AI memory)
+│   │       ├── publish/route.ts      ← POST ke Zernio (TikTok + Instagram Reels)
+│   │       ├── upload-logo/route.ts  ← upload logo watermark ke Blob
 │   │       ├── trends/route.ts       ← Google Trends + AI topic suggest
 │   │       └── analytics/route.ts   ← proxy ke Zernio API
 │   └── knowledge/
@@ -85,17 +91,17 @@ remotion-shorts-template/
 │   └── scenes/
 │       ├── Intro.tsx
 │       ├── Outro.tsx
-│       ├── TipScene.tsx              ← layout: center
-│       ├── TipSceneSide.tsx          ← layout: side
-│       ├── TipSceneBold.tsx          ← layout: bold
-│       └── VisualBlock.tsx           ← dynamic visual per tip (stat/checklist/quote/code/comparison/bullets)
+│       ├── TipScene.tsx              ← layout: center (2-zone absolute)
+│       ├── TipSceneSide.tsx          ← layout: side (2-zone absolute)
+│       ├── TipSceneBold.tsx          ← layout: bold (2-zone absolute)
+│       └── VisualBlock.tsx           ← dynamic visual per tip
 │
 ├── scripts/
-│   ├── upload-blob.mjs               ← upload hasil render ke Vercel Blob
+│   ├── upload-blob.mjs               ← upload video + thumbnail ke Vercel Blob
 │   └── generate-voiceover.ts         ← generate MP3 lokal (dev only)
 │
 ├── .github/workflows/
-│   └── render-video.yml              ← GitHub Actions render pipeline
+│   └── render-video.yml              ← GitHub Actions render pipeline (edge-tts only)
 │
 └── src/Root.tsx                      ← register Remotion composition
 ```
@@ -107,24 +113,21 @@ remotion-shorts-template/
 ### `web/.env.local` (Vercel env vars)
 ```
 AI_BASE_URL=https://creavoo-9router.fly.dev/v1
-AI_API_KEY=sk-ed9692f760e5767c-iyjffp-fb655a19
+AI_API_KEY=sk-...
 AI_MODEL=creavoo-combo
 GITHUB_REPO=ezazee/Creavoo-Video-Factory
-GITHUB_TOKEN=github_pat_11ATAKROQ0Qc9xjYiEF5xH_...
+GITHUB_TOKEN=github_pat_...
 NEXT_PUBLIC_GITHUB_REPO=ezazee/Creavoo-Video-Factory
-BLOB_READ_WRITE_TOKEN=vercel_blob_rw_Kpz71y545mFjWaLo_...
-TTS_VOICE=id-ID-ArdiNeural
-ZERNIO_API_KEY=sk_085beacb098ab8ec0ddf6a2852f0e53b...
-ELEVENLABS_API_KEY=sk_b4f2262818f882a5825ed99bfde75a07...
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
+ZERNIO_API_KEY=sk_...
 ```
 
 ### GitHub Repository Secrets (Settings → Secrets → Actions)
 ```
-BLOB_READ_WRITE_TOKEN   ← wajib ada, untuk upload MP4 setelah render
-ELEVENLABS_API_KEY      ← untuk TTS ElevenLabs di GitHub Actions
+BLOB_READ_WRITE_TOKEN   ← wajib ada, untuk upload MP4 + thumbnail setelah render
 ```
 
-> **Catatan:** Secret harus di **Repository secrets**, BUKAN Environment secrets.
+> ElevenLabs dihapus sepenuhnya. Tidak ada `ELEVENLABS_API_KEY` di mana pun.
 
 ---
 
@@ -135,7 +138,10 @@ ELEVENLABS_API_KEY      ← untuk TTS ElevenLabs di GitHub Actions
   "videoTitle": "string (maks 45 karakter)",
   "subtitle": "string (maks 65 karakter)",
   "introEmoji": "string (1 emoji)",
-  "accent": "#hexcolor",
+  "accent": "#hexcolor (AI pilih sesuai topik)",
+  "layout": "center | side | bold (AI pilih sesuai konten)",
+  "caption": "string (caption siap-post TikTok/IG, tanpa hashtag)",
+  "hashtags": ["string (10-15 tag tanpa #)"],
   "tips": [
     {
       "title": "string (maks 35 karakter)",
@@ -143,55 +149,111 @@ ELEVENLABS_API_KEY      ← untuk TTS ElevenLabs di GitHub Actions
       "emoji": "string",
       "visual": {
         "type": "stat | checklist | bullets | quote | code | comparison",
-        // stat:       number (e.g. "3x"), label
-        // checklist:  items[3]
-        // bullets:    items[3]
-        // quote:      text, source?
-        // code:       lines[3-4]
-        // comparison: left, right, leftLabel?, rightLabel?
+        "number": "string (stat)",
+        "label": "string (stat)",
+        "items": ["string x3 (checklist/bullets)"],
+        "text": "string (quote)",
+        "source": "string (quote, opsional)",
+        "lines": ["string x3-4 (code)"],
+        "left": "string (comparison)",
+        "right": "string (comparison)",
+        "leftLabel": "string (comparison)",
+        "rightLabel": "string (comparison)"
       }
     }
   ],
   "ctaText": "string",
   "scenes": [
-    { "id": "intro",  "text": "narasi 4-6 kalimat" },
-    { "id": "tip-1",  "text": "narasi 4-6 kalimat" },
-    { "id": "tip-2",  "text": "narasi 4-6 kalimat" },
-    { "id": "tip-3",  "text": "narasi 4-6 kalimat" },
-    { "id": "tip-4",  "text": "narasi 4-6 kalimat" },
-    { "id": "tip-5",  "text": "narasi 4-6 kalimat" },
-    { "id": "outro",  "text": "narasi 3-4 kalimat" }
+    { "id": "intro",  "text": "narasi 2-3 kalimat" },
+    { "id": "tip-1",  "text": "narasi 2-3 kalimat" },
+    { "id": "tip-2",  "text": "narasi 2-3 kalimat" },
+    { "id": "tip-3",  "text": "narasi 2-3 kalimat" },
+    { "id": "tip-4",  "text": "narasi 2-3 kalimat" },
+    { "id": "tip-5",  "text": "narasi 2-3 kalimat" },
+    { "id": "outro",  "text": "narasi 2 kalimat, sebut @creavoo.id dan creavoo.com" }
   ]
 }
 ```
 
 ---
 
-## Video Templates (6 jenis)
+## Layout Video (dipilih AI otomatis)
 
-| Slug | Layout | Panduan |
+| Layout | Scene Component | Cocok untuk |
 |---|---|---|
-| `5-tips` | center | intro + 5 tips praktis + outro |
-| `explained` | bold | penjelasan konsep dari nol |
-| `mistakes` | bold | 5 kesalahan umum + solusinya |
-| `beginner-vs-pro` | side | kontras cara pemula vs pro |
-| `hidden-gems` | side | 5 hal jarang diketahui |
-| `tutorial` | side | 5 langkah berurutan |
+| `center` | `TipScene.tsx` | Tips umum, motivasi, insight |
+| `side` | `TipSceneSide.tsx` | Tutorial, langkah-langkah, hidden gems |
+| `bold` | `TipSceneBold.tsx` | Mistakes, perbandingan, hal mengejutkan |
+
+Semua layout pakai **2-zone absolute positioning** supaya teks tidak overlap:
+- Zona atas (~340px dari top): emoji + judul tip
+- Zona bawah (~1080px dari top): subtitle fade out → visual block fade in
 
 ---
 
 ## Visual Blocks per Tip
 
-Setiap tip punya `visual` yang dipilih AI berdasarkan konten. Muncul animasi di **35% durasi scene**, subtitle fade out saat visual datang:
+AI pilih tipe berdasarkan konten. Muncul animasi di 35% durasi scene:
 
 | Type | Tampilan | Cocok untuk |
 |---|---|---|
-| `stat` | Angka besar (200px) + label, glow pulse | Tips dengan metrik/angka |
+| `stat` | Angka besar + label, glow pulse | Tips dengan metrik/angka |
 | `checklist` | 3 item + animated checkmark | Langkah-langkah actionable |
 | `bullets` | 3 poin dengan accent dot | Tips generic |
 | `quote` | Card dengan tanda kutip besar | Insight/prinsip kuat |
 | `code` | Mock terminal + syntax color | Tips teknis/kode |
-| `comparison` | Split card merah (❌) vs warna (✅) | Pemula vs pro / salah vs benar |
+| `comparison` | Split card ❌ vs ✅ | Pemula vs pro / salah vs benar |
+
+---
+
+## Vercel Blob: Struktur Storage
+
+```
+video-{runId}.mp4           ← hasil render video
+thumbnail-{runId}.jpg       ← frame detik ke-1, untuk thumbnail TikTok/IG
+settings/watermark.json     ← { handle, logoUrl } — watermark setting global
+memory/history.json         ← ["topik → judul", ...] max 100 — AI memory
+```
+
+---
+
+## AI Memory System
+
+`memory/history.json` di Vercel Blob menyimpan daftar video yang sudah pernah dibuat dalam format `"topik → judul"`.
+
+- Dibaca setiap kali `/api/generate` dipanggil (selalu, regardless `useKnowledge`)
+- Disimpan (await) setelah AI berhasil generate — sebelum response dikirim
+- Format `"topik → judul"` supaya AI kenali duplikasi meski judulnya berbeda
+- Bisa di-reset dari UI Generate → tombol "🗑 Reset memory AI" → modal konfirmasi → `DELETE /api/memory`
+
+---
+
+## Social Media Publish (Zernio)
+
+`/api/publish` mengirim video ke TikTok atau Instagram via Zernio API.
+
+**TikTok:**
+```json
+{
+  "tiktokSettings": {
+    "privacy_level": "PUBLIC_TO_EVERYONE",
+    "video_cover_image_url": "<thumbnailUrl jika ada>"
+  }
+}
+```
+
+**Instagram (Reels, bukan grid biasa):**
+```json
+{
+  "platformSpecificData": {
+    "contentType": "reels",
+    "shareToFeed": true,        ← bisa toggle dari UI
+    "instagramThumbnail": "<thumbnailUrl jika ada>"
+  }
+}
+```
+
+`shareToFeed: true` = Reels muncul di grid feed profil juga. `false` = hanya di tab Reels.
 
 ---
 
@@ -199,60 +261,36 @@ Setiap tip punya `visual` yang dipilih AI berdasarkan konten. Muncul animasi di 
 
 | URL | Fungsi |
 |---|---|
-| `/` | Generate video — pilih template, topik, voice, render |
-| `/results` | List semua history video, preview, download, delete |
-| `/analytics` | Dashboard TikTok + Instagram via Zernio API |
+| `/` | Generate video — topik, voice, knowledge toggle, auto-upload toggle |
+| `/results` | List history video, preview, download, delete, upload manual |
+| `/analytics` | Dashboard TikTok + Instagram via Zernio |
 
-### Fitur di halaman `/` (Generate):
-- 6 template cards dengan preview CSS 9:16 mini
-- Trending Topics button → fetch Google Trends ID → AI suggest 6 topik sesuai domain Creavoo
-- ElevenLabs voices dinamis (loaded dari API) + edge-tts fallback
-- Play preview voice sebelum pilih
-- Render state: script preview (kiri) + inline GitHub Actions steps (kanan) auto-refresh 15s
+### Fitur halaman `/` (Generate):
+- Input topik + Trending Topics (AI suggest 6 topik)
+- Toggle **Ikut Knowledge Creavoo** — ON: script berdasarkan produk Creavoo; OFF: topik digital bebas. Memory tetap dicek di kedua mode.
+- Pilih voice: **Ardi** (male) atau **Gadis** (female) — edge-tts only
+- Watermark: upload logo + `@handle` — tersimpan ke Blob (bukan localStorage)
+- Toggle **Auto Upload TikTok / Instagram** — preferensi disimpan per video di history
+- Toggle **Tampil di grid / feed profil** (sub-opsi Instagram) — kontrol `shareToFeed`
+- Render state: script preview + inline GitHub Actions steps + frame counter (`23/2406`) + progress bar
 - Cancel run button
-- Done state: video player + download + "Buat video baru"
+- Done state: video player + download + upload TikTok/IG + caption & hashtag + copy button
+- Tombol **Reset memory AI** (di bawah generate) → modal peringatan → wipe Blob memory
 
-### Fitur di `/results`:
-- List panel (kiri): semua history dengan status indicator
-- Preview panel (kanan): video player ketika item dipilih
-- Delete video → hapus dari Vercel Blob permanen
-- Delete action → cancel + hapus GitHub Actions run
-
----
-
-## Knowledge Base
-
-`web/knowledge/creavoo-knowledge.md` — knowledge tentang produk Creavoo (~500 baris).
-
-Dibaca oleh dua route sebelum operasi:
-- `/api/trends` — baca knowledge → scrape Google Trends → AI suggest topik yang relevan dengan domain Creavoo
-- `/api/generate` — baca knowledge → inject ke system prompt → AI pakai sebagai landasan fakta, tone, pain points
-
-**Update file ini** kalau ada info produk baru. Tidak perlu deploy ulang — dibaca langsung dari filesystem saat runtime.
+### Fitur `/results`:
+- Load dari Vercel Blob (source of truth) + merge dengan localStorage
+- Resume polling otomatis untuk video yang masih rendering
+- Preview panel: video player, download, upload TikTok/IG, caption & hashtag
+- **1 tombol Hapus** per item → delete Blob + delete GitHub Actions run sekaligus
 
 ---
 
-## State Terakhir (per 23 Juni 2026)
+## Watermark
 
-### Sudah jalan ✅
-- Full pipeline: topik → script → render → upload → download
-- ElevenLabs TTS + edge-tts fallback (auto-detect dari voice ID pattern)
-- 6 template dengan 3 layout Remotion berbeda
-- Dynamic visual blocks per tip (6 tipe, AI yang pilih)
-- Knowledge-first flow (creavoo-knowledge.md)
-- Inline GitHub Actions logs (poll tiap 15s)
-- Results page dengan delete video + delete action
-- Analytics page (Zernio — TikTok + Instagram)
-- Voices API (ElevenLabs dynamic) + preview suara
-
-### Yang belum / potensial next step
-- [ ] Watermark `@yourhandle` masih hardcoded — perlu bisa diubah dari UI atau env
-- [ ] Intro dan Outro scene belum punya visual blocks (masih static)
-- [ ] Tidak ada progress bar render yang real (hanya step names dari GitHub API)
-- [ ] Analytics Zernio belum confirmed working (perlu test dengan akun yang terhubung)
-- [ ] Belum ada auth/login — siapapun yang punya URL bisa akses
-- [ ] Video history tersimpan di localStorage saja — hilang kalau clear browser
-- [ ] `@yourhandle` watermark di video perlu bisa di-set per user
+- **Handle** (`@namaakun`): input text di form, simpan ke `settings/watermark.json` di Blob
+- **Logo**: upload via `/api/upload-logo`, URL tersimpan ke `settings/watermark.json`
+- Kalau handle kosong dan tidak ada logo → watermark tidak dirender (tidak ada pill kosong)
+- Dibaca saat `/api/render` trigger, dikirim ke GitHub Actions sebagai prop
 
 ---
 
@@ -262,7 +300,7 @@ Dibaca oleh dua route sebelum operasi:
 # Dev (web)
 cd web && npm run dev
 
-# Dev (Remotion preview)  
+# Dev (Remotion preview)
 npm run dev
 
 # Generate voiceover lokal
@@ -273,7 +311,36 @@ npx remotion render GeneratedVideo out/video.mp4
 
 # Lint
 cd web && npm run lint
+npm run lint  # (dari root)
 ```
+
+---
+
+## State Terakhir (per 23 Juni 2026)
+
+### Sudah jalan ✅
+- Full pipeline: topik → script → TTS → render → upload → download
+- edge-tts only (ElevenLabs dihapus sepenuhnya, suara selalu konsisten)
+- 3 layout Remotion (center/side/bold) dipilih AI otomatis dari topik
+- Dynamic visual blocks per tip (6 tipe, AI pilih, wajib variasi)
+- Knowledge-first flow + AI memory (simpan "topik → judul", hindari duplikasi)
+- Reset memory dari UI dengan modal konfirmasi
+- Watermark (handle + logo) tersimpan di Vercel Blob
+- Inline GitHub Actions logs + frame counter + progress bar render
+- Results page: load dari Blob, resume polling, 1 tombol hapus (Blob + Action)
+- Upload TikTok (dengan thumbnail + tiktokSettings)
+- Upload Instagram **Reels** (bukan grid) + toggle shareToFeed + thumbnail
+- Auto-upload preferensi tersimpan per video (survive page navigation)
+- Caption + hashtag AI-generated, tersimpan di history, bisa copy
+- Thumbnail otomatis: ffmpeg extract frame detik ke-1, upload ke Blob
+- Analytics page (Zernio)
+
+### Yang belum / potensial next step
+- [ ] Tidak ada auth/login — siapapun yang punya URL bisa akses
+- [ ] Intro dan Outro scene belum punya visual blocks (masih static)
+- [ ] Zernio publish belum confirmed working end-to-end (perlu akun connected + test real)
+- [ ] Video lama (sebelum fitur thumbnail) tidak punya thumbnailUrl — Zernio auto-generate
+- [ ] localStorage sebagai cache history — bisa hilang kalau clear browser (Blob tetap source of truth)
 
 ---
 
