@@ -57,9 +57,19 @@ jobs:
               voice = "id-ID-ArdiNeural"
 
           async def gen_edgetts(text, voice_name, out_file):
-              import edge_tts
-              communicate = edge_tts.Communicate(text, voice_name)
-              await communicate.save(str(out_file))
+              import edge_tts, asyncio
+              for attempt in range(5):
+                  try:
+                      communicate = edge_tts.Communicate(text, voice_name)
+                      await communicate.save(str(out_file))
+                      return
+                  except Exception as e:
+                      if attempt < 4:
+                          wait = 3 * (attempt + 1)
+                          print(f"  retry {attempt+1}/4 after {wait}s ({e})")
+                          await asyncio.sleep(wait)
+                      else:
+                          raise
 
           async def main():
               print(f"Voice engine: edge-tts (voice={voice})")
@@ -67,6 +77,7 @@ jobs:
                   print(f"→ edge-tts {scene['id']} …")
                   await gen_edgetts(scene["text"], voice, out_dir / f"{scene['id']}.mp3")
                   print(f"✓ {scene['id']}")
+                  await asyncio.sleep(0.5)
 
           asyncio.run(main())
           PYEOF

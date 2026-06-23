@@ -424,31 +424,38 @@ export default function Home() {
 
                   {/* Phone preview — full width, centered */}
                   <div className="flex justify-center">
-                    <div className="rounded-3xl overflow-hidden border border-white/[0.1] relative"
-                      style={{ width: 220, height: 390, background: "#0a0a0a", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
-                      {/* gradient bg */}
-                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 40%, ${accentColor}40 0%, transparent 65%)` }} />
+                    <div className="rounded-3xl overflow-hidden border border-black/[0.08] relative"
+                      style={{ width: 220, height: 390, background: "#f8f8fa", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
+                      {/* grid lines */}
+                      <div className="absolute inset-0" style={{
+                        backgroundImage: "linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)",
+                        backgroundSize: "30px 30px", opacity: 0.06,
+                      }} />
+                      {/* accent radial */}
+                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 35%, ${accentColor}45 0%, transparent 60%)` }} />
+                      {/* accent corner */}
+                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 80% 85%, ${accentColor}20 0%, transparent 45%)` }} />
 
                       {/* top bar sim */}
                       <div className="absolute top-0 inset-x-0 h-7 flex items-center justify-center">
-                        <div className="w-16 h-1 rounded-full bg-white/10" />
+                        <div className="w-16 h-1 rounded-full bg-black/10" />
                       </div>
 
                       {/* top-left: logo */}
-                      <div className="absolute top-10 left-4 bg-black/55 rounded-xl px-3 py-2" style={{ backdropFilter: "blur(8px)", maxWidth: 90 }}>
+                      <div className="absolute top-8 left-3" style={{ maxWidth: 52 }}>
                         {watermarkLogoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={watermarkLogoUrl} alt="" className="h-7 w-auto max-w-[72px] object-contain rounded-sm" />
+                          <img src={watermarkLogoUrl} alt="" style={{ height: 18, width: "auto", maxWidth: 44, objectFit: "contain", borderRadius: 4 }} />
                         ) : (
-                          <div className="w-7 h-7 rounded-lg bg-zinc-700 border border-white/10 flex items-center justify-center">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                          <div className="w-4 h-4 rounded bg-zinc-200 flex items-center justify-center">
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                           </div>
                         )}
                       </div>
 
                       {/* top-right: handle */}
-                      <div className="absolute top-10 right-4 bg-black/55 rounded-full px-3 py-2" style={{ backdropFilter: "blur(8px)" }}>
-                        <p className="text-white font-bold text-sm">
+                      <div className="absolute top-8 right-3">
+                        <p className="text-zinc-700 font-bold" style={{ fontSize: 9 }}>
                           {watermarkHandle || "@handle"}
                         </p>
                       </div>
@@ -456,14 +463,14 @@ export default function Home() {
                       {/* content placeholder */}
                       <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 items-center">
                         <div className="text-3xl">🎬</div>
-                        <div className="h-3 bg-white/20 rounded-full w-full" />
-                        <div className="h-2 bg-white/10 rounded-full w-4/5" />
-                        <div className="h-2 bg-white/07 rounded-full w-3/5" />
+                        <div className="h-3 bg-black/10 rounded-full w-full" />
+                        <div className="h-2 bg-black/07 rounded-full w-4/5" />
+                        <div className="h-2 bg-black/05 rounded-full w-3/5" />
                       </div>
 
                       {/* bottom bar sim */}
                       <div className="absolute bottom-4 inset-x-0 flex justify-center">
-                        <div className="w-24 h-1 rounded-full bg-white/15" />
+                        <div className="w-24 h-1 rounded-full bg-black/10" />
                       </div>
                     </div>
                   </div>

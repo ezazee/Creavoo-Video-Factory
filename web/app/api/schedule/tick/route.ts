@@ -126,10 +126,39 @@ export async function GET(req: NextRequest) {
   log.push(`triggered at ${wibHour}:00 WIB day=${wibDay}`);
 
   try {
-    // Ambil topik dari trending
-    const trendsData = await callInternal("/api/trends");
-    const topics: string[] = trendsData.topics ?? [];
-    const topic = topics[Math.floor(Math.random() * Math.min(topics.length, 3))] ?? "Tips viral TikTok 2026";
+    // Topik fallback per kategori knowledge OFF
+    const KNOWLEDGE_OFF_TOPICS = [
+      // Pertumbuhan organik
+      "Cara naik follower tanpa iklan di TikTok", "Strategi engagement yang bikin algoritma suka", "Kesalahan yang bikin akun Instagram susah berkembang",
+      // Pengelolaan bisnis sosmed
+      "Tips UMKM jualan di era digital", "Cara bangun brand yang diingat orang", "Strategi customer service yang bikin pelanggan loyal",
+      // Algoritma platform
+      "Cara kerja algoritma FYP TikTok", "Tips konten Instagram masuk Explore page", "Strategi YouTube Shorts agar direkomendasikan",
+      // Monetisasi
+      "Cara dapat uang dari konten tanpa jutaan follower", "Strategi affiliate marketing yang benar-benar convert", "Tips dapat endorse pertama sebagai kreator kecil",
+      // Psikologi viral
+      "Kenapa orang stop scrolling di konten tertentu", "Formula caption yang bikin orang komen dan share", "Cara bikin hook video yang powerful di 3 detik",
+      // Produktivitas kreator
+      "Cara batch content 1 minggu hanya dalam 2 jam", "Tools gratis terbaik untuk kreator konten Indonesia", "Tips riset konten yang efisien",
+      // Personal branding
+      "Cara membangun otoritas di niche tertentu", "Pentingnya konsistensi visual dan voice di sosmed", "Tips dapat kolaborasi lewat personal brand",
+      // Teknis kreator
+      "Cara rekam video dengan HP tanpa kamera mahal", "Tips lighting konten di rumah modal nol", "Aplikasi edit video terbaik di HP gratis",
+    ];
+
+    // Ambil topik dari trending, fallback ke kategori knowledge OFF
+    const trendsData = await callInternal("/api/trends").catch(() => ({ topics: [] }));
+    const trendTopics: string[] = trendsData.topics ?? [];
+
+    let topic: string;
+    if (settings.useKnowledge) {
+      // Knowledge ON: pakai trending topics
+      topic = trendTopics[Math.floor(Math.random() * Math.min(trendTopics.length, 3))] ?? "Tips viral sosmed 2026";
+    } else {
+      // Knowledge OFF: rotasi dari kategori topik digital
+      const allTopics = trendTopics.length > 0 ? [...trendTopics.slice(0, 3), ...KNOWLEDGE_OFF_TOPICS] : KNOWLEDGE_OFF_TOPICS;
+      topic = allTopics[Math.floor(Math.random() * Math.min(allTopics.length, 10))];
+    }
     log.push(`topic: ${topic}`);
 
     // Generate script

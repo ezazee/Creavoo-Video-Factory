@@ -22,8 +22,8 @@ function loadCreavooKnowledge(): string {
 
 function buildSystemPrompt(useKnowledge: boolean, knowledge: string): string {
   const knowledgeBlock = useKnowledge && knowledge
-    ? `\n\n---\n## KNOWLEDGE PRODUK CREAVOO (baca ini dulu, jadikan landasan script):\n\n${knowledge}\n\n---\n\nGunakan knowledge Creavoo di atas sebagai:\n- Sumber fakta, angka, dan use case yang akurat\n- Panduan tone dan voice (friendly, bahasa Indonesia casual, empati dulu baru solusi)\n- Konteks pain points yang relevan untuk audiens creator Indonesia\n- Referensi fitur Creavoo jika topik relevan (tapi jangan hard-sell, biarkan natural)\n\n`
-    : "\n\nTopik bebas seputar dunia digital, teknologi, media sosial, atau produktivitas — tidak harus tentang Creavoo. Tetap bahasa Indonesia casual, tone friendly.\n\n";
+    ? `\n\n---\n## KNOWLEDGE PRODUK CREAVOO (baca ini dulu, jadikan landasan script):\n\n${knowledge}\n\n---\n\nGunakan knowledge Creavoo di atas sebagai:\n- Sumber fakta, angka, dan use case yang akurat\n- Panduan tone dan voice per tipe kreator (lihat Bagian 9)\n- Arahan konten spesifik per platform (lihat Bagian 10)\n- Angle dan sudut pandang per niche (lihat Bagian 11)\n- Definisi tone konten yang diminta (lihat Bagian 12)\n- Konteks pain points yang relevan untuk audiens creator Indonesia\n- Referensi fitur Creavoo jika topik relevan (tapi jangan hard-sell, biarkan natural)\n\n`
+    : `\n\n## ARAHAN KONTEN KNOWLEDGE OFF\n\nBuat konten seputar dunia digital, bisnis online, dan kreator Indonesia — TANPA harus promosi Creavoo.\n\nKategori topik yang tersedia (pilih yang paling relevan dengan topik yang diberikan):\n1. Pertumbuhan akun organik — follower, engagement, algoritma\n2. Pengelolaan bisnis di sosmed — UMKM, branding, jualan online\n3. Rahasia algoritma platform — FYP TikTok, Explore IG, Shorts YouTube\n4. Monetisasi konten — affiliate, endorse, jualan digital, passive income\n5. Psikologi konten viral — hook, scroll stopper, emotional trigger, caption\n6. Produktivitas kreator — batch content, tools gratis, workflow efisien\n7. Personal branding — otoritas niche, konsistensi, dapat klien\n8. Tips teknis kreator — rekam HP, lighting, audio, edit video gratis\n\nTetap bahasa Indonesia casual, tone friendly, dan berikan value yang actionable.\nCTA boleh arahkan ke @creavoo.id sebagai tools yang membantu, tapi bukan hard-sell.\n\n`;
 
   const layoutGuide = `Pilih layout yang paling cocok untuk topik ini:
 - "center" → tips umum, motivasi, insight
@@ -47,7 +47,7 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
   "videoTitle": "string (maks 45 karakter, catchy, pakai angka jika relevan)",
   "subtitle": "string (maks 65 karakter, hook yang bikin penasaran dan scroll-stop)",
   "introEmoji": "string (1 emoji yang paling relevan dengan topik)",
-  "accent": "string (pilih hex color yang paling cocok dengan vibe topik: #6366f1=teknologi/AI, #3b82f6=informatif/tutorial, #22c55e=produktivitas/sukses, #f97316=energi/motivasi, #ec4899=kreatif/lifestyle, #00AEEF=social media/digital, #eab308=tips/warning, #ef4444=mistakes/bahaya)",
+  "accent": "string (pilih hex color yang paling cocok dengan vibe topik: #6366f1=teknologi/AI, #3b82f6=informatif/tutorial, #22c55e=produktivitas/sukses/bisnis, #f97316=energi/motivasi/UMKM, #ec4899=kreatif/lifestyle/beauty/fashion, #00AEEF=social media/digital/Creavoo, #eab308=tips/warning/keuangan, #ef4444=mistakes/bahaya, #a855f7=personal brand/KOL, #14b8a6=wellness/kesehatan, #f59e0b=entertainment/gaming, #64748b=profesional/LinkedIn)",
   "layout": "string (pilih: center | side | bold — sesuai konten)",
   "tips": [
     {

@@ -34,10 +34,23 @@ type DailyMetric = {
   posts?: number;
 };
 
+type RecentPost = {
+  platform: string;
+  content: string;
+  publishedAt: string;
+  thumbnailUrl: string | null;
+  platformPostUrl: string | null;
+  likes: number;
+  views: number;
+  reach: number;
+  engagementRate: number;
+};
+
 type AnalyticsData = {
   tiktok: PlatformStats | null;
   instagram: PlatformStats | null;
   daily: DailyMetric[] | null;
+  recentPosts?: RecentPost[];
   errors: { tiktok: string | null; instagram: string | null; daily: string | null };
 };
 
@@ -368,6 +381,77 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Post Terbaru */}
+            {data.recentPosts && data.recentPosts.length > 0 && (
+              <div className="mt-4 border border-white/[0.06] rounded-2xl overflow-hidden" style={{ background: "#111113" }}>
+                <div className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                  <p className="text-sm font-bold text-white">Post Terbaru</p>
+                  <p className="text-xs text-zinc-600">{data.recentPosts.length} posts ditampilkan</p>
+                </div>
+                <div className="px-5 py-2">
+                  <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-x-4 gap-y-0 items-center py-2 border-b border-white/[0.04]">
+                    <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest col-span-2">Platform / Konten</p>
+                    <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest text-right">Likes</p>
+                    <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest text-right">Views</p>
+                    <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest text-right">Reach</p>
+                    <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest text-right"></p>
+                  </div>
+                  {data.recentPosts.map((post, i) => {
+                    const isIG = post.platform?.toLowerCase().includes("instagram");
+                    const isTT = post.platform?.toLowerCase() === "tiktok";
+                    const isYT = post.platform?.toLowerCase().includes("youtube");
+                    const platformIcon = isIG ? "📸" : isTT ? "🎵" : isYT ? "▶️" : "📱";
+                    const dateStr = new Date(post.publishedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+                    const caption = post.content?.replace(/#\S+/g, "").trim() || "(no caption)";
+                    const hashtags = (post.content?.match(/#\S+/g) ?? []).slice(0, 3).join(" ");
+                    return (
+                      <div key={i} className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-x-4 items-center py-3 border-b border-white/[0.03] last:border-0">
+                        {/* Platform + thumb */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{platformIcon}</span>
+                          {post.thumbnailUrl ? (
+                            <img src={post.thumbnailUrl} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-white/[0.06] flex-shrink-0" />
+                          )}
+                        </div>
+                        {/* Content */}
+                        <div className="min-w-0">
+                          <p className="text-sm text-zinc-200 truncate leading-snug">{caption}</p>
+                          <p className="text-[11px] mt-0.5">
+                            <span className="text-zinc-600">{dateStr}</span>
+                            {post.engagementRate > 0 && (
+                              <span className="ml-2 font-semibold" style={{ color: post.engagementRate > 10 ? "#22c55e" : post.engagementRate > 3 ? "#facc15" : "#71717a" }}>
+                                {post.engagementRate.toFixed(2)}% eng.
+                              </span>
+                            )}
+                            {hashtags && <span className="ml-2 text-zinc-700 truncate">{hashtags}</span>}
+                          </p>
+                        </div>
+                        {/* Stats */}
+                        <p className="text-sm font-semibold text-zinc-300 text-right tabular-nums">{fmt(post.likes)}</p>
+                        <p className="text-sm font-semibold text-zinc-300 text-right tabular-nums">{fmt(post.views)}</p>
+                        <p className="text-sm font-semibold text-zinc-300 text-right tabular-nums">{fmt(post.reach)}</p>
+                        {/* External link */}
+                        <div>
+                          {post.platformPostUrl ? (
+                            <a href={post.platformPostUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-zinc-600 hover:text-zinc-300 transition-colors">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                              </svg>
+                            </a>
+                          ) : <span className="w-4 inline-block" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
