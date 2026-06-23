@@ -62,7 +62,19 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
       "title": "string (maks 35 karakter, nama tip/poin singkat dan kuat)",
       "subtitle": "string (maks 80 karakter, manfaat atau konteks singkat)",
       "emoji": "string (1 emoji)",
-      "bullets": ["string (maks 38 karakter, poin spesifik & punchy)", "string", "string"]
+      "visual": {
+        "type": "stat | checklist | bullets | quote | code | comparison (PILIH yang paling cocok dengan isi tip)",
+        "number": "string (jika type=stat: angka besar, maks 6 karakter, e.g. '3x', '80%', '5 dtk')",
+        "label": "string (jika type=stat: konteks angka, maks 40 karakter)",
+        "items": ["string (jika type=checklist/bullets: maks 38 karakter)", "...", "..."],
+        "text": "string (jika type=quote: insight kuat, maks 90 karakter)",
+        "source": "string (jika type=quote: opsional, e.g. 'Creator 100K followers')",
+        "lines": ["string (jika type=code: baris kode pendek, maks 40 karakter)", "...", "...", "..."],
+        "left": "string (jika type=comparison: versi salah/pemula, maks 50 karakter)",
+        "right": "string (jika type=comparison: versi benar/pro, maks 50 karakter)",
+        "leftLabel": "string (jika type=comparison: label kiri, e.g. '❌ Pemula')",
+        "rightLabel": "string (jika type=comparison: label kanan, e.g. '✅ Pro')"
+      }
     }
   ],
   "ctaText": "string (maks 50 karakter, ajakan follow/subscribe yang natural)",
@@ -84,7 +96,15 @@ Aturan PENTING:
 - Hindari simbol: # @ & / → tulis sebagai kata
 - Angka HARUS ditulis sebagai kata: "lima" bukan "5", "dua puluh" bukan "20"
 - Akronim (AI, TikTok, Instagram, API, URL) boleh dipakai as-is
-- tips array: TEPAT 5 item, setiap tip punya bullets: TEPAT 3 item (maks 38 karakter, konkrit, no full sentence)
+- tips array: TEPAT 5 item
+- Setiap tip WAJIB punya field "visual" dengan type yang paling cocok:
+  * stat → kalau tip punya angka/metrik impresif
+  * checklist → kalau tip berisi langkah-langkah yang harus dilakukan
+  * comparison → kalau tip tentang perbandingan cara salah vs benar / pemula vs pro
+  * quote → kalau tip berisi insight atau prinsip yang kuat
+  * code → kalau tip teknis/kode (contoh command, syntax, snippet)
+  * bullets → default kalau tidak ada tipe lain yang cocok
+- items/lines: TEPAT 3 item (maks 38 karakter masing-masing)
 - scenes array: TEPAT 7 item dengan id persis: intro, tip-1, tip-2, tip-3, tip-4, tip-5, outro`;
 }
 

@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { VisualBlock, type VisualData } from "./VisualBlock";
 
 type Props = {
   duration: number;
@@ -15,16 +16,11 @@ type Props = {
   emoji: string;
   accent: string;
   bullets?: string[];
+  visual?: VisualData;
 };
 
 export const TipSceneBold: React.FC<Props> = ({
-  duration,
-  number,
-  title,
-  subtitle,
-  emoji,
-  accent,
-  bullets = [],
+  duration, number, title, subtitle, emoji, accent, bullets, visual,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -36,16 +32,9 @@ export const TipSceneBold: React.FC<Props> = ({
   const subtitleIn = spring({ frame: frame - 44, fps, config: { damping: 16 } });
   const numBadgeIn = spring({ frame: frame - 55, fps, config: { damping: 14 } });
 
-  const b1Frame = Math.floor(duration * 0.35);
-  const b2Frame = Math.floor(duration * 0.54);
-  const b3Frame = Math.floor(duration * 0.70);
+  const visualStartFrame = Math.floor(duration * 0.35);
 
-  const bullet1In = spring({ frame: frame - b1Frame, fps, config: { damping: 13, stiffness: 100 } });
-  const bullet2In = spring({ frame: frame - b2Frame, fps, config: { damping: 13, stiffness: 100 } });
-  const bullet3In = spring({ frame: frame - b3Frame, fps, config: { damping: 13, stiffness: 100 } });
-  const bulletIns = [bullet1In, bullet2In, bullet3In];
-
-  const subtitleFade = interpolate(frame, [b1Frame - 10, b1Frame + 15], [1, 0], {
+  const subtitleFade = interpolate(frame, [visualStartFrame - 10, visualStartFrame + 15], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -59,18 +48,17 @@ export const TipSceneBold: React.FC<Props> = ({
     extrapolateRight: "clamp",
   });
 
-  const hasBullets = bullets.length > 0;
+  const resolvedVisual: VisualData | null = visual ?? (
+    bullets && bullets.length > 0 ? { type: "bullets", items: bullets } : null
+  );
+  const hasVisual = resolvedVisual !== null;
 
   return (
     <AbsoluteFill style={{ opacity: 1 - exit }}>
       {/* Top accent strip */}
       <div
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 8,
+          position: "absolute", top: 0, left: 0, right: 0, height: 8,
           background: `linear-gradient(90deg, ${accent}, transparent)`,
         }}
       />
@@ -79,38 +67,28 @@ export const TipSceneBold: React.FC<Props> = ({
       <div
         style={{
           position: "absolute",
-          top: "50%",
-          left: "50%",
+          top: "50%", left: "50%",
           transform: "translate(-50%, -50%)",
-          fontSize: 800,
-          fontWeight: 900,
-          color: `${accent}08`,
-          lineHeight: 1,
-          fontFamily: "sans-serif",
-          userSelect: "none",
+          fontSize: 800, fontWeight: 900,
+          color: `${accent}08`, lineHeight: 1,
+          fontFamily: "sans-serif", userSelect: "none",
           opacity: bgNumIn,
         }}
       >
         {number}
       </div>
 
-      {/* Content */}
       <AbsoluteFill
         style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 80px",
-          gap: 0,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          padding: "0 80px", gap: 0,
         }}
       >
         {/* Emoji */}
         <div
           style={{
-            fontSize: 160,
-            lineHeight: 1,
-            marginBottom: 40,
+            fontSize: 150, lineHeight: 1, marginBottom: 32,
             opacity: emojiIn,
             transform: `scale(${0.5 + emojiIn * 0.5}) translateY(${emojiFloat}px) scale(${pulse})`,
             filter: `drop-shadow(0 0 40px ${accent}88)`,
@@ -122,12 +100,8 @@ export const TipSceneBold: React.FC<Props> = ({
         {/* Title */}
         <p
           style={{
-            fontSize: 84,
-            fontWeight: 900,
-            color: "white",
-            textAlign: "center",
-            lineHeight: 1.05,
-            marginBottom: 28,
+            fontSize: 80, fontWeight: 900, color: "white",
+            textAlign: "center", lineHeight: 1.05, marginBottom: 24,
             opacity: titleIn,
             transform: `scale(${0.85 + titleIn * 0.15})`,
             letterSpacing: "-1px",
@@ -140,90 +114,35 @@ export const TipSceneBold: React.FC<Props> = ({
         <div
           style={{
             width: interpolate(lineIn, [0, 1], [0, 180]),
-            height: 5,
-            background: accent,
-            borderRadius: 3,
-            marginBottom: 28,
+            height: 5, background: accent,
+            borderRadius: 3, marginBottom: 24,
             boxShadow: `0 0 20px ${accent}`,
           }}
         />
 
-        {/* Subtitle — fades as bullets arrive */}
+        {/* Subtitle */}
         <p
           style={{
-            fontSize: 38,
-            fontWeight: 600,
-            color: "#a1a1aa",
-            textAlign: "center",
-            lineHeight: 1.45,
-            maxWidth: 880,
-            marginBottom: hasBullets ? 0 : 0,
-            opacity: hasBullets ? subtitleIn * subtitleFade : subtitleIn,
+            fontSize: 36, fontWeight: 600, color: "#a1a1aa",
+            textAlign: "center", lineHeight: 1.45, maxWidth: 880,
+            opacity: hasVisual ? subtitleIn * subtitleFade : subtitleIn,
             transform: `translateY(${(1 - subtitleIn) * 20}px)`,
-            position: hasBullets ? "absolute" : "relative",
+            position: hasVisual ? "absolute" : "relative",
           }}
         >
           {subtitle}
         </p>
 
-        {/* Bullets — pop in from below, centered */}
-        {hasBullets && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-              width: "100%",
-              maxWidth: 880,
-            }}
-          >
-            {bullets.slice(0, 3).map((bullet, i) => {
-              const bIn = bulletIns[i];
-              return (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 20,
-                    opacity: bIn,
-                    transform: `translateY(${(1 - bIn) * 30}px) scale(${0.9 + bIn * 0.1})`,
-                  }}
-                >
-                  {/* Numbered pill */}
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: "50%",
-                      border: `3px solid ${accent}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 24,
-                      fontWeight: 900,
-                      color: accent,
-                      flexShrink: 0,
-                      boxShadow: `0 0 14px ${accent}66`,
-                    }}
-                  >
-                    {i + 1}
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 38,
-                      fontWeight: 700,
-                      color: "white",
-                      lineHeight: 1.25,
-                      textAlign: "left",
-                    }}
-                  >
-                    {bullet}
-                  </p>
-                </div>
-              );
-            })}
+        {/* Visual block */}
+        {hasVisual && frame >= visualStartFrame && (
+          <div style={{ width: "100%", maxWidth: 920 }}>
+            <VisualBlock
+              visual={resolvedVisual!}
+              frame={frame}
+              fps={fps}
+              startFrame={visualStartFrame}
+              accent={accent}
+            />
           </div>
         )}
 
@@ -231,19 +150,11 @@ export const TipSceneBold: React.FC<Props> = ({
         {frame >= 55 && (
           <div
             style={{
-              position: "absolute",
-              bottom: 120,
-              right: 80,
-              width: 90,
-              height: 90,
-              borderRadius: "50%",
+              position: "absolute", bottom: 120, right: 80,
+              width: 90, height: 90, borderRadius: "50%",
               border: `4px solid ${accent}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 48,
-              fontWeight: 900,
-              color: accent,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 48, fontWeight: 900, color: accent,
               opacity: numBadgeIn,
               transform: `scale(${0.6 + numBadgeIn * 0.4})`,
               boxShadow: `0 0 24px ${accent}55`,

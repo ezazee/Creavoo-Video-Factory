@@ -9,12 +9,14 @@ import { TipSceneBold } from "./scenes/TipSceneBold";
 import { Outro } from "./scenes/Outro";
 import { SCENE_IDS, audioPath } from "./voiceover";
 import type { SceneId } from "./voiceover";
+import type { VisualData } from "./scenes/VisualBlock";
 
 export type TipData = {
   title: string;
   subtitle: string;
   emoji: string;
   bullets?: string[];
+  visual?: VisualData;
 };
 
 export type VideoLayout = "center" | "side" | "bold";
@@ -34,7 +36,7 @@ export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
 
-const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[] }>> = {
+const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData }>> = {
   center: TipScene,
   side: TipSceneSide,
   bold: TipSceneBold,
@@ -90,6 +92,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
               emoji={tip.emoji}
               accent={accentColor}
               bullets={tip.bullets}
+              visual={tip.visual}
             />
           </Series.Sequence>
         ))}
