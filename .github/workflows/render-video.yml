@@ -1,0 +1,90 @@
+name: Render Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenes_json:
+        description: "Scene texts as JSON array"
+        required: true
+      props_json:
+        description: "Video props (title, tips, accent, etc) as JSON"
+        required: true
+      voice:
+        description: "Edge TTS voice"
+        default: "id-ID-ArdiNeural"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install edge-tts
+        run: pip install edge-tts
+
+      - name: Generate voiceover MP3s
+        run: |
+          python - <<'PYEOF'
+          import asyncio, json, os, sys
+          from pathlib import Path
+          try:
+              import edge_tts
+          except ImportError:
+              print("edge-tts not found"); sys.exit(1)
+
+          scenes = json.loads(os.environ["SCENES_JSON"])
+          voice  = os.environ.get("VOICE", "id-ID-ArdiNeural")
+          out_dir = Path("public/voiceover/generated")
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          async def main():
+              for scene in scenes:
+                  out_file = out_dir / f"{scene['id']}.mp3"
+                  print(f"→ generating {scene['id']} …")
+                  communicate = edge_tts.Communicate(scene["text"], voice)
+                  await communicate.save(str(out_file))
+                  print(f"✓ {out_file}")
+
+          asyncio.run(main())
+          PYEOF
+        env:
+          SCENES_JSON: ${{ inputs.scenes_json }}
+          VOICE: ${{ inputs.voice }}
+
+      - name: Render video with Remotion
+        run: |
+          PROPS=$(python - <<'PYEOF'
+          import json, os
+          props = json.loads(os.environ["PROPS_JSON"])
+          props["sceneDurations"] = []
+          print(json.dumps(props))
+          PYEOF
+          )
+          mkdir -p out
+          npx remotion render GeneratedVideo out/video.mp4 --props="$PROPS"
+        env:
+          PROPS_JSON: ${{ inputs.props_json }}
+
+      - name: Upload to Vercel Blob
+        run: |
+          npm install @vercel/blob --no-save
+          node scripts/upload-blob.mjs ${{ github.run_id }}
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
