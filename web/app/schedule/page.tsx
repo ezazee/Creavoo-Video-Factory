@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import type { ScheduleSettings, DayConfig, ScheduleJob } from "../api/schedule/route";
 
+const RECOMMENDED_DAY_CONFIGS: Partial<Record<number, DayConfig>> = {
+  0: { times: [],       carouselTimes: [19],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  1: { times: [7, 20],  carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  2: { times: [12, 21], carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  3: { times: [7, 21],  carouselTimes: [20],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  4: { times: [12, 20], carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  5: { times: [7, 17],  carouselTimes: [19],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  6: { times: [10, 20], carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+};
+
 const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const DAY_SHORT = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -32,13 +42,15 @@ function timeAgo(iso: string) {
 }
 
 function configSummary(cfg: DayConfig): string {
-  const times = cfg.times.length
-    ? cfg.times.map(h => `${String(h).padStart(2, "0")}:00`).join(", ")
-    : "–";
+  const video = cfg.times.length
+    ? `🎥 ${cfg.times.map(h => `${String(h).padStart(2, "0")}:00`).join(", ")}`
+    : "";
+  const carousel = (cfg.carouselTimes ?? []).length
+    ? `🎠 ${(cfg.carouselTimes ?? []).map(h => `${String(h).padStart(2, "0")}:00`).join(", ")}`
+    : "";
+  const parts = [video, carousel].filter(Boolean).join("  ·  ") || "–";
   const voice = cfg.voice.includes("Ardi") ? "Ardi" : "Gadis";
-  const know = cfg.useKnowledge ? "Knowledge ON" : "Knowledge OFF";
-  const feed = cfg.igShareToFeed ? "Feed ON" : "Feed OFF";
-  return `${times} · ${voice} · ${know} · ${feed}`;
+  return `${parts} · ${voice}`;
 }
 
 function DayConfigPanel({
@@ -57,12 +69,21 @@ function DayConfigPanel({
     onChange({ ...config, times });
   };
 
+  const toggleCarouselHour = (h: number) => {
+    const carouselTimes = (config.carouselTimes ?? []).includes(h)
+      ? (config.carouselTimes ?? []).filter(x => x !== h)
+      : [...(config.carouselTimes ?? []), h].sort((a, b) => a - b);
+    onChange({ ...config, carouselTimes });
+  };
+
   return (
     <div className="border-t border-white/[0.05] px-5 py-4 flex flex-col gap-5">
-      {/* Jam */}
+      {/* Jam Video */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-zinc-500 font-medium">Jam Posting (WIB)</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-zinc-400 font-semibold">🎥 Jam Video (WIB)</p>
+          </div>
           {config.times.length > 0 && (
             <p className="text-[10px] text-zinc-600">{config.times.map(h => `${String(h).padStart(2, "0")}:00`).join(", ")}</p>
           )}
@@ -74,10 +95,39 @@ function DayConfigPanel({
               <button key={h} onClick={() => toggleHour(h)}
                 className="h-9 rounded-lg text-[11px] font-bold transition-all"
                 style={{
-                  background: active ? "#00AEEF" : "#ffffff09",
+                  background: active ? "#6366f1" : "#ffffff09",
                   color: active ? "white" : "#71717a",
                   border: active ? "none" : "1px solid #ffffff10",
-                  boxShadow: active ? "0 2px 8px #00AEEF44" : "none",
+                  boxShadow: active ? "0 2px 8px #6366f144" : "none",
+                }}>
+                {String(h).padStart(2, "0")}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Jam Carousel */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-zinc-400 font-semibold">🎠 Jam Carousel (WIB)</p>
+          </div>
+          {(config.carouselTimes ?? []).length > 0 && (
+            <p className="text-[10px] text-zinc-600">{(config.carouselTimes ?? []).map(h => `${String(h).padStart(2, "0")}:00`).join(", ")}</p>
+          )}
+        </div>
+        <div className="grid grid-cols-6 gap-1.5">
+          {HOURS.map(h => {
+            const active = (config.carouselTimes ?? []).includes(h);
+            return (
+              <button key={h} onClick={() => toggleCarouselHour(h)}
+                className="h-9 rounded-lg text-[11px] font-bold transition-all"
+                style={{
+                  background: active ? "#E1306C" : "#ffffff09",
+                  color: active ? "white" : "#71717a",
+                  border: active ? "none" : "1px solid #ffffff10",
+                  boxShadow: active ? "0 2px 8px #E1306C44" : "none",
                 }}>
                 {String(h).padStart(2, "0")}
               </button>
@@ -131,6 +181,7 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [runLog, setRunLog] = useState<string[] | null>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
@@ -179,6 +230,15 @@ export default function SchedulePage() {
     };
   };
 
+  const applyRecommended = async () => {
+    const patch: Partial<ScheduleSettings> = {
+      days: [0, 1, 2, 3, 4, 5, 6],
+      dayConfigs: RECOMMENDED_DAY_CONFIGS,
+      times: [7, 20],
+    };
+    await save(patch);
+  };
+
   const runNow = async () => {
     setRunning(true); setRunLog(null);
     try {
@@ -192,6 +252,16 @@ export default function SchedulePage() {
       }
     } catch (e) { setRunLog([String(e)]); }
     setRunning(false);
+  };
+
+  const testPipeline = async () => {
+    setTesting(true); setRunLog(null);
+    try {
+      const res = await fetch("/api/schedule/tick?force=true&dryrun=true");
+      const d = await res.json();
+      setRunLog(d.log ?? [d.error ?? "done"]);
+    } catch (e) { setRunLog([String(e)]); }
+    setTesting(false);
   };
 
   const statusColor: Record<ScheduleJob["status"], string> = {
@@ -234,6 +304,13 @@ export default function SchedulePage() {
             </div>
             <div className="flex items-center gap-3">
               {saving && <span className="text-xs text-zinc-600">Menyimpan…</span>}
+              <button
+                onClick={applyRecommended}
+                className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                style={{ background: "#6366f115", color: "#818cf8", border: "1px solid #6366f130" }}
+                title="Terapkan jadwal rekomendasi (Sen–Sab, 2x sehari)">
+                ✦ Rekomendasi
+              </button>
               <Toggle on={settings.enabled} onToggle={() => save({ enabled: !settings.enabled })} />
               <span className="text-sm font-semibold" style={{ color: settings.enabled ? "#00AEEF" : "#52525b" }}>
                 {settings.enabled ? "Aktif" : "Nonaktif"}
@@ -244,8 +321,11 @@ export default function SchedulePage() {
           {/* Per-day config */}
           <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
             <div className="px-5 py-4 border-b border-white/[0.06]">
-              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Jadwal Per Hari</p>
-              <p className="text-[11px] text-zinc-600 mt-1">Aktifkan hari lalu klik untuk atur jam, voice, dan opsi per hari</p>
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest">Jadwal Per Hari</p>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "#6366f120", color: "#818cf8" }}>🎥 VIDEO OTOMATIS</span>
+              </div>
+              <p className="text-[11px] text-zinc-600">Aktifkan hari lalu klik untuk atur jam, voice, dan opsi per hari</p>
             </div>
 
             <div className="divide-y divide-white/[0.04]">
@@ -345,13 +425,23 @@ export default function SchedulePage() {
             </div>
             <div className="px-5 py-4 flex flex-col gap-3">
               <p className="text-xs text-zinc-500">Jalankan satu siklus sekarang: cek pending jobs + generate video baru.</p>
-              <button onClick={runNow} disabled={running}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-50"
-                style={{ background: "linear-gradient(135deg,#6366f1,#00AEEF)", boxShadow: "0 4px 16px #6366f140" }}>
-                {running
-                  ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Berjalan…</>
-                  : "▶ Jalankan Sekarang"}
-              </button>
+              <div className="flex gap-2">
+                <button onClick={runNow} disabled={running || testing}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#6366f1,#00AEEF)", boxShadow: "0 4px 16px #6366f140" }}>
+                  {running
+                    ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Berjalan…</>
+                    : "▶ Jalankan Sekarang"}
+                </button>
+                <button onClick={testPipeline} disabled={running || testing}
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
+                  style={{ background: "#f59e0b15", color: "#fbbf24", border: "1px solid #f59e0b30" }}
+                  title="Force generate + render sekarang, bypass cek jadwal">
+                  {testing
+                    ? <><span className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" /> Testing…</>
+                    : "⚡ Test Pipeline"}
+                </button>
+              </div>
               {runLog && (
                 <div className="rounded-xl border border-white/[0.06] p-3 flex flex-col gap-1" style={{ background: "#0a0a0a" }}>
                   {runLog.map((line, i) => (

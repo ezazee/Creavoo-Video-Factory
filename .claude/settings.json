@@ -10,7 +10,13 @@
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\analytics\")",
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\api\\\\actions\")",
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\api\\\\blob\")",
-      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\results\")"
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\KBN Digital\\\\Downloads\\\\Compressed\\\\dev-shorts-factory-free\\\\remotion-shorts-template\\\\web\\\\app\\\\results\")",
+      "Bash(npm run *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit -m 'fix: add missing /api/run-status route for GitHub Actions polling *)",
+      "Bash(git commit *)"
     ]
   }
 }

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { put, head, list } from "@vercel/blob";
 
 export type DayConfig = {
-  times: number[];       // jam WIB aktif di hari ini
+  times: number[];          // jam WIB untuk video
+  carouselTimes: number[];  // jam WIB untuk carousel
   voice: string;
   useKnowledge: boolean;
   igShareToFeed: boolean;
@@ -25,9 +26,12 @@ export type ScheduleJob = {
   runId: number;
   createdAt: string;
   status: "rendering" | "done" | "failed" | "posted";
+  mediaType: "video" | "carousel";
   videoTitle: string;
   videoUrl?: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
+  imageUrls?: string[];
   caption?: string;
   hashtags?: string[];
   autoTikTok: boolean;
@@ -43,26 +47,40 @@ const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 export const DEFAULT_DAY_CONFIG: DayConfig = {
   times: [9],
+  carouselTimes: [],
   voice: "id-ID-ArdiNeural",
   useKnowledge: true,
   igShareToFeed: true,
 };
 
-export const DEFAULT_SETTINGS: ScheduleSettings = {
-  enabled: false,
-  days: [1, 2, 3, 4, 5],
-  dayConfigs: {},
+export const RECOMMENDED_SETTINGS: Omit<ScheduleSettings, "enabled" | "autoTikTok" | "autoInstagram"> = {
+  days: [0, 1, 2, 3, 4, 5, 6],  // semua hari (Minggu khusus carousel)
   voice: "id-ID-ArdiNeural",
   useKnowledge: true,
+  igShareToFeed: true,
+  times: [7, 20],
+  dayConfigs: {
+    0: { times: [],       carouselTimes: [19],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu
+    1: { times: [7, 20],  carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin
+    2: { times: [12, 21], carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa
+    3: { times: [7, 21],  carouselTimes: [20],      voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu
+    4: { times: [12, 20], carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Kamis
+    5: { times: [7, 17],  carouselTimes: [19],      voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Jumat
+    6: { times: [10, 20], carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Sabtu
+  },
+};
+
+export const DEFAULT_SETTINGS: ScheduleSettings = {
+  enabled: false,
   autoTikTok: false,
   autoInstagram: false,
-  igShareToFeed: true,
-  times: [9],
+  ...RECOMMENDED_SETTINGS,
 };
 
 export function getDayConfig(settings: ScheduleSettings, day: number): DayConfig {
   return settings.dayConfigs?.[day] ?? {
     times: settings.times,
+    carouselTimes: [],
     voice: settings.voice,
     useKnowledge: settings.useKnowledge,
     igShareToFeed: settings.igShareToFeed,
