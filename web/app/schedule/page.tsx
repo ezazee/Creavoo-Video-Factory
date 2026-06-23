@@ -224,6 +224,7 @@ export default function SchedulePage() {
   const getDayConfig = (day: number): DayConfig => {
     return settings?.dayConfigs?.[day] ?? {
       times: settings?.times ?? [9],
+      carouselTimes: [],
       voice: settings?.voice ?? "id-ID-ArdiNeural",
       useKnowledge: settings?.useKnowledge ?? true,
       igShareToFeed: settings?.igShareToFeed ?? true,
