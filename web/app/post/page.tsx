@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 
 type Step = "idle" | "generating" | "rendering" | "done" | "error";
@@ -207,6 +207,7 @@ export default function PostPage() {
   const [error, setError] = useState<string | null>(null);
   const [trendTopics, setTrendTopics] = useState<string[]>([]);
   const [loadingTrends, setLoadingTrends] = useState(false);
+  const postDataRef = useRef<PostData | null>(null);
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -222,6 +223,27 @@ export default function PostPage() {
       if (d.logoUrl) setWatermarkLogoUrl(d.logoUrl);
     }).catch(() => {});
   }, []);
+
+  // Keep ref in sync so polling closure can access latest postData
+  useEffect(() => { postDataRef.current = postData; }, [postData]);
+
+  const saveImageHistory = (
+    rId: number | null, data: PostData | null,
+    mediaType: "image" | "carousel", imgUrl?: string, imgUrls?: string[],
+  ) => {
+    if (!data || !rId) return;
+    const item = {
+      id: `img-${rId}`, title: data.videoTitle, status: "done",
+      accent: data.accent ?? "#6366f1", createdAt: new Date().toISOString(),
+      caption: data.caption, hashtags: data.hashtags,
+      mediaType, imageUrl: imgUrl, imageUrls: imgUrls,
+    };
+    try {
+      const prev = JSON.parse(localStorage.getItem("vf_history") ?? "[]");
+      const deduped = prev.filter((h: { id: string }) => h.id !== item.id);
+      localStorage.setItem("vf_history", JSON.stringify([item, ...deduped]));
+    } catch { /* ignore */ }
+  };
 
   const loadTrends = () => {
     setLoadingTrends(true);
@@ -246,9 +268,11 @@ export default function PostPage() {
           setCarouselSlides(d.slides);
           setSlideIndex(0);
           setStep("done");
+          saveImageHistory(runId, postDataRef.current, "carousel", undefined, d.slides);
         } else if (d.imageUrl) {
           setImageUrl(d.imageUrl);
           setStep("done");
+          saveImageHistory(runId, postDataRef.current, "image", d.imageUrl, undefined);
         } else {
           setStep("error"); setError("Gambar tidak ditemukan.");
         }
