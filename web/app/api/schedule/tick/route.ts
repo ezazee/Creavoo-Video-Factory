@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { list } from "@vercel/blob";
 import { loadSettings, loadRecentJobs, saveJob, getDayConfig, type ScheduleJob } from "../route";
 
+export const maxDuration = 60;
+
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 const GITHUB_REPO = process.env.GITHUB_REPO ?? "";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? "";
