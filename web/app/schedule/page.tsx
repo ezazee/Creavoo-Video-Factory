@@ -182,6 +182,7 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingNotif, setTestingNotif] = useState(false);
   const [runLog, setRunLog] = useState<string[] | null>(null);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
@@ -441,6 +442,17 @@ export default function SchedulePage() {
                   {testing
                     ? <><span className="w-4 h-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" /> Testing…</>
                     : "⚡ Test Pipeline"}
+                </button>
+                <button onClick={async () => {
+                  setTestingNotif(true);
+                  await fetch("/api/schedule/test-notif", { method: "POST" });
+                  setTestingNotif(false);
+                }} disabled={testingNotif}
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
+                  style={{ background: "#0088cc15", color: "#29b6f6", border: "1px solid #0088cc30" }}>
+                  {testingNotif
+                    ? <><span className="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" /> Mengirim…</>
+                    : "🔔 Test Notif Tele"}
                 </button>
               </div>
               {runLog && (
