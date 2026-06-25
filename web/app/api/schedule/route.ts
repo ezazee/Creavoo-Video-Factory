@@ -54,19 +54,20 @@ export const DEFAULT_DAY_CONFIG: DayConfig = {
 };
 
 export const RECOMMENDED_SETTINGS: Omit<ScheduleSettings, "enabled" | "autoTikTok" | "autoInstagram"> = {
-  days: [0, 1, 2, 3, 4, 5, 6],  // semua hari (Minggu khusus carousel)
+  days: [0, 1, 2, 3, 4, 5, 6],
   voice: "id-ID-ArdiNeural",
   useKnowledge: true,
   igShareToFeed: true,
   times: [7, 20],
   dayConfigs: {
-    0: { times: [],       carouselTimes: [19],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu
-    1: { times: [7, 20],  carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin
-    2: { times: [12, 21], carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa
-    3: { times: [7, 21],  carouselTimes: [20],      voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu
-    4: { times: [12, 20], carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Kamis
-    5: { times: [7, 17],  carouselTimes: [19],      voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Jumat
-    6: { times: [10, 20], carouselTimes: [],        voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Sabtu
+    // 6 video + 6 carousel per minggu, tidak ada jam yang tumpang tindih
+    0: { times: [],      carouselTimes: [19],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu   — 🎠19
+    1: { times: [7],     carouselTimes: [21],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin    — 🎥07  🎠21
+    2: { times: [20],    carouselTimes: [12],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa   — 🎠12  🎥20
+    3: { times: [7, 21], carouselTimes: [],       voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu     — 🎥07  🎥21
+    4: { times: [],      carouselTimes: [12, 19], voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Kamis    — 🎠12  🎠19
+    5: { times: [7],     carouselTimes: [20],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Jumat    — 🎥07  🎠20
+    6: { times: [10],    carouselTimes: [],       voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Sabtu    — 🎥10
   },
 };
 

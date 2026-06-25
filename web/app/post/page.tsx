@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 
 type Step = "idle" | "generating" | "rendering" | "done" | "error";
-type PostType = "single" | "carousel";
 
 type TipData = { title: string; subtitle: string; emoji: string };
 type PostData = {
@@ -197,7 +196,6 @@ function PostPreview({
 export default function PostPage() {
   const [topic, setTopic] = useState("");
   const [useKnowledge, setUseKnowledge] = useState(true);
-  const [postType, setPostType] = useState<PostType>("single");
   const [step, setStep] = useState<Step>("idle");
   const [postData, setPostData] = useState<PostData | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -215,6 +213,7 @@ export default function PostPage() {
   const [publishUrl, setPublishUrl] = useState<string | null>(null);
   const [published, setPublished] = useState(false);
 
+  const postType = "carousel" as const;
   const totalSlides = (postData?.tips.slice(0, 5).length ?? 5) + 2;
 
   useEffect(() => {
@@ -349,7 +348,7 @@ export default function PostPage() {
 
           <div className="mb-8">
             <h2 className="text-2xl font-black text-white">Post Gambar</h2>
-            <p className="text-zinc-500 text-sm mt-1">Generate infografis 1080×1080 untuk Instagram feed</p>
+            <p className="text-zinc-500 text-sm mt-1">Generate carousel infografis untuk Instagram feed</p>
           </div>
 
           <div className="flex gap-8">
@@ -357,26 +356,9 @@ export default function PostPage() {
             {/* ── Left: Form ── */}
             <div className="flex-1 flex flex-col gap-4 min-w-0">
 
-              {/* Post type toggle */}
-              <div className="rounded-2xl border border-white/[0.07] p-1 flex gap-1" style={{ background: "#111113" }}>
-                {(["single", "carousel"] as PostType[]).map(t => (
-                  <button key={t} onClick={() => setPostType(t)}
-                    className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
-                    style={{
-                      background: postType === t ? "#ffffff12" : "transparent",
-                      color: postType === t ? "white" : "#52525b",
-                      border: postType === t ? "1px solid #ffffff15" : "1px solid transparent",
-                    }}>
-                    {t === "single" ? "🖼️  Single Post" : "🎠  Carousel"}
-                  </button>
-                ))}
-              </div>
-
-              {postType === "carousel" && (
-                <p className="text-[11px] text-zinc-600 -mt-2 px-1">
-                  Cover + {(postData?.tips.length ?? 5)} tips + Outro = {totalSlides} slide
-                </p>
-              )}
+              <p className="text-[11px] text-zinc-500 px-1">
+                🎠 Carousel — Cover + {(postData?.tips.length ?? 5)} tips + Outro = {totalSlides} slide
+              </p>
 
               {/* Topic */}
               <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
@@ -434,7 +416,7 @@ export default function PostPage() {
                   style={{ background: "#ffffff0f", borderColor: "#ffffff15", color: "white" }}>
                   {step === "rendering"
                     ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Rendering…</>
-                    : `▶ Render ${postType === "carousel" ? `Carousel (${totalSlides} slide)` : "Gambar"}`}
+                    : `▶ Render Carousel (${totalSlides} slide)`}
                 </button>
               )}
 
@@ -505,9 +487,20 @@ export default function PostPage() {
 
                   {/* Rendering status */}
                   {step === "rendering" && (
-                    <div className="rounded-xl border border-yellow-500/20 px-4 py-3 text-xs text-yellow-400 flex items-center gap-2" style={{ background: "#f59e0b10" }}>
-                      <span className="w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                      Menunggu GitHub Actions…
+                    <div className="rounded-xl border border-yellow-500/20 px-4 py-3 text-xs text-yellow-400 flex flex-col gap-1.5" style={{ background: "#f59e0b10" }}>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        Menunggu GitHub Actions…
+                      </div>
+                      {runId && (
+                        <a
+                          href={`https://github.com/${process.env.NEXT_PUBLIC_GITHUB_REPO}/actions/runs/${runId}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-yellow-300 underline underline-offset-2 hover:text-yellow-100 transition-colors pl-5"
+                        >
+                          Lihat log run #{runId} →
+                        </a>
+                      )}
                     </div>
                   )}
 

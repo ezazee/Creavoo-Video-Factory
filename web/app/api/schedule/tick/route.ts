@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { list } from "@vercel/blob";
 import { loadSettings, loadRecentJobs, saveJob, getDayConfig, type ScheduleJob } from "../route";
+import { sendTelegram } from "@/lib/telegram";
 
 export const maxDuration = 60;
 
@@ -10,9 +11,8 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? "";
 
 // Panggil internal API routes dari dalam server-side
 async function callInternal(path: string, method = "GET", body?: unknown) {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
+  const base = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const res = await fetch(`${base}${path}`, {
     method,
     headers: { "Content-Type": "application/json" },
@@ -46,6 +46,12 @@ async function processPendingJobs() {
       if (run.conclusion !== "success") {
         await saveJob({ ...job, status: "failed" });
         log.push(`job ${job.runId} → failed`);
+        await sendTelegram(
+          `❌ <b>Render gagal!</b>\n` +
+          `📌 <i>${job.videoTitle}</i>\n` +
+          `🗂 ${job.mediaType} · runId ${job.runId}\n` +
+          `⚠️ GitHub Actions conclusion: ${run.conclusion}`
+        );
         continue;
       }
 
@@ -163,71 +169,89 @@ export async function GET(req: NextRequest) {
     "Cara rekam video dengan HP tanpa kamera mahal", "Tips lighting konten di rumah modal nol", "Aplikasi edit video terbaik di HP gratis",
   ];
 
+  // Ambil judul yang sudah dipakai dalam 14 hari terakhir untuk dedup
+  const recentJobs = await loadRecentJobs(30);
+  const recentTitles = new Set(
+    recentJobs
+      .filter(j => Date.now() - new Date(j.createdAt).getTime() < 14 * 24 * 3600 * 1000)
+      .map(j => j.videoTitle?.toLowerCase().trim())
+      .filter(Boolean)
+  );
+
   const pickTopic = (trendTopics: string[]) => {
+    let pool: string[];
     if (dayConfig.useKnowledge) {
-      return trendTopics[Math.floor(Math.random() * Math.min(trendTopics.length, 3))] ?? "Tips viral sosmed 2026";
+      pool = trendTopics.slice(0, 6).length > 0 ? trendTopics.slice(0, 6) : ["Tips viral sosmed 2026"];
+    } else {
+      pool = trendTopics.length > 0 ? [...trendTopics.slice(0, 3), ...KNOWLEDGE_OFF_TOPICS] : KNOWLEDGE_OFF_TOPICS;
     }
-    const pool = trendTopics.length > 0 ? [...trendTopics.slice(0, 3), ...KNOWLEDGE_OFF_TOPICS] : KNOWLEDGE_OFF_TOPICS;
-    return pool[Math.floor(Math.random() * Math.min(pool.length, 10))];
+    // Hindari topik yang judulnya mirip dengan yang sudah pernah dipakai
+    const filtered = pool.filter(t => !recentTitles.has(t.toLowerCase().trim()));
+    return (filtered.length > 0 ? filtered : pool)[Math.floor(Math.random() * Math.min((filtered.length || pool.length), 10))];
   };
 
   const results: { type: string; runId?: number; videoTitle?: string }[] = [];
 
+  const needVideo = isVideoTime || force;
+  const needCarousel = isCarouselTime || (force && (dayConfig.carouselTimes ?? []).length > 0);
+
+  // Generate script untuk video dan carousel secara paralel agar tidak timeout
+  const trendsData = await callInternal("/api/trends").catch(() => ({ topics: [] }));
+
+  const [videoScript, carouselScript] = await Promise.all([
+    needVideo
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: dayConfig.useKnowledge })
+          .then((s: Record<string, unknown>) => { log.push(`[VIDEO] ✓ script: "${s.videoTitle}"`); return s; })
+          .catch((e: unknown) => { log.push(`[VIDEO] generate error: ${e}`); return null; })
+      : Promise.resolve(null),
+    needCarousel
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: dayConfig.useKnowledge })
+          .then((s: Record<string, unknown>) => { log.push(`[CAROUSEL] ✓ script: "${s.videoTitle}"`); return s; })
+          .catch((e: unknown) => { log.push(`[CAROUSEL] generate error: ${e}`); return null; })
+      : Promise.resolve(null),
+  ]);
+
   // ── VIDEO ──────────────────────────────────────────────────────────────────
-  if (isVideoTime || force) {
-    try {
-      const trendsData = await callInternal("/api/trends").catch(() => ({ topics: [] }));
-      const topic = pickTopic(trendsData.topics ?? []);
-      log.push(`[VIDEO] topic: "${topic}"`);
-
-      const script = await callInternal("/api/generate", "POST", { topic, useKnowledge: dayConfig.useKnowledge });
-      log.push(`[VIDEO] ✓ script: "${script.videoTitle}"`);
-
-      if (dryrun) {
-        log.push("[VIDEO] DRY RUN — render dilewati");
-      } else {
+  if (needVideo && videoScript) {
+    if (dryrun) {
+      log.push("[VIDEO] DRY RUN — render dilewati");
+    } else {
+      try {
         const renderRes = await callInternal("/api/render", "POST", {
-          ...script, voice: dayConfig.voice, watermarkHandle: "", watermarkLogoUrl: null,
+          ...videoScript, voice: dayConfig.voice, watermarkHandle: "", watermarkLogoUrl: null,
         });
         const runId: number = renderRes.runId;
         log.push(`[VIDEO] render triggered runId=${runId}`);
         await saveJob({
           runId, createdAt: new Date().toISOString(), status: "rendering", mediaType: "video",
-          videoTitle: script.videoTitle, caption: script.caption, hashtags: script.hashtags,
+          videoTitle: videoScript.videoTitle as string, caption: videoScript.caption as string, hashtags: videoScript.hashtags as string[],
           autoTikTok: settings.autoTikTok, autoInstagram: settings.autoInstagram, igShareToFeed: dayConfig.igShareToFeed,
         });
-        results.push({ type: "video", runId, videoTitle: script.videoTitle });
-      }
-    } catch (e) { log.push(`[VIDEO] error: ${e}`); }
+        results.push({ type: "video", runId, videoTitle: videoScript.videoTitle as string });
+      } catch (e) { log.push(`[VIDEO] render error: ${e}`); }
+    }
   }
 
   // ── CAROUSEL ───────────────────────────────────────────────────────────────
-  if (isCarouselTime || (force && (dayConfig.carouselTimes ?? []).length > 0)) {
-    try {
-      const trendsData = await callInternal("/api/trends").catch(() => ({ topics: [] }));
-      const topic = pickTopic(trendsData.topics ?? []);
-      log.push(`[CAROUSEL] topic: "${topic}"`);
-
-      const script = await callInternal("/api/generate", "POST", { topic, useKnowledge: dayConfig.useKnowledge });
-      log.push(`[CAROUSEL] ✓ script: "${script.videoTitle}"`);
-
-      if (dryrun) {
-        log.push("[CAROUSEL] DRY RUN — render dilewati");
-      } else {
-        const totalSlides = (script.tips?.length ?? 5) + 2;
+  if (needCarousel && carouselScript) {
+    if (dryrun) {
+      log.push("[CAROUSEL] DRY RUN — render dilewati");
+    } else {
+      try {
+        const totalSlides = ((carouselScript.tips as unknown[])?.length ?? 5) + 2;
         const renderRes = await callInternal("/api/render-image", "POST", {
-          ...script, type: "carousel", totalSlides, watermarkHandle: "", watermarkLogoUrl: null,
+          ...carouselScript, type: "carousel", totalSlides, watermarkHandle: "", watermarkLogoUrl: null,
         });
         const runId: number = renderRes.runId;
         log.push(`[CAROUSEL] render triggered runId=${runId}`);
         await saveJob({
           runId, createdAt: new Date().toISOString(), status: "rendering", mediaType: "carousel",
-          videoTitle: script.videoTitle, caption: script.caption, hashtags: script.hashtags,
+          videoTitle: carouselScript.videoTitle as string, caption: carouselScript.caption as string, hashtags: carouselScript.hashtags as string[],
           autoTikTok: false, autoInstagram: settings.autoInstagram, igShareToFeed: true,
         });
-        results.push({ type: "carousel", runId, videoTitle: script.videoTitle });
-      }
-    } catch (e) { log.push(`[CAROUSEL] error: ${e}`); }
+        results.push({ type: "carousel", runId, videoTitle: carouselScript.videoTitle as string });
+      } catch (e) { log.push(`[CAROUSEL] render error: ${e}`); }
+    }
   }
 
   if (dryrun) {

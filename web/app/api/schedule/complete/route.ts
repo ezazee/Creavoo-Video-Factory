@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { list } from "@vercel/blob";
 import { loadJob, saveJob, type ScheduleJob } from "../route";
+import { sendTelegram } from "@/lib/telegram";
+
+export const maxDuration = 60;
 
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
@@ -114,16 +117,45 @@ export async function POST(req: NextRequest) {
         if (res.ok) {
           const d = await res.json();
           updated = { ...updated, instagramUrl: d.postUrl ?? "posted", status: "posted" };
+        } else {
+          const errText = await res.text();
+          await sendTelegram(
+            `❌ <b>Gagal post ke Instagram</b>\n` +
+            `📌 <i>${job.videoTitle}</i>\n` +
+            `🗂 ${job.mediaType} · runId ${job.runId}\n` +
+            `⚠️ Error: Zernio ${res.status} — ${errText.slice(0, 200)}`
+          );
         }
-      } catch { /* non-blocking */ }
+      } catch (e) {
+        await sendTelegram(
+          `❌ <b>Gagal post ke Instagram</b>\n` +
+          `📌 <i>${job.videoTitle}</i>\n` +
+          `🗂 ${job.mediaType} · runId ${job.runId}\n` +
+          `⚠️ Error: ${String(e).slice(0, 200)}`
+        );
+      }
     }
   }
 
-  if (updated.status === "done" && !job.autoTikTok && !job.autoInstagram) {
-    // no auto-post configured, just mark done
+  await saveJob(updated);
+
+  // ── Telegram notifications ──────────────────────────────────────────────────
+  const typeLabel = job.mediaType === "carousel" ? "🎠 Carousel" : "🎬 Reels";
+  if (updated.status === "posted") {
+    const igUrl = updated.instagramUrl && updated.instagramUrl !== "posted" ? `\n🔗 ${updated.instagramUrl}` : "";
+    await sendTelegram(
+      `✅ <b>Berhasil diposting!</b>\n` +
+      `📌 <i>${job.videoTitle}</i>\n` +
+      `${typeLabel}${igUrl}`
+    );
+  } else if (updated.status === "done") {
+    await sendTelegram(
+      `⚠️ <b>Render selesai, tapi belum diposting</b>\n` +
+      `📌 <i>${job.videoTitle}</i>\n` +
+      `${typeLabel} · Auto-post tidak aktif atau tidak ada akun terhubung`
+    );
   }
 
-  await saveJob(updated);
   return NextResponse.json({ ok: true, status: updated.status, mediaType: job.mediaType });
 }
 

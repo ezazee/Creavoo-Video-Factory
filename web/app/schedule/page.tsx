@@ -5,13 +5,13 @@ import Sidebar from "../components/Sidebar";
 import type { ScheduleSettings, DayConfig, ScheduleJob } from "../api/schedule/route";
 
 const RECOMMENDED_DAY_CONFIGS: Partial<Record<number, DayConfig>> = {
-  0: { times: [],       carouselTimes: [19],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
-  1: { times: [7, 20],  carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
-  2: { times: [12, 21], carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
-  3: { times: [7, 21],  carouselTimes: [20],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
-  4: { times: [12, 20], carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
-  5: { times: [7, 17],  carouselTimes: [19],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
-  6: { times: [10, 20], carouselTimes: [],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },
+  0: { times: [],      carouselTimes: [19],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu   🎠19
+  1: { times: [7],     carouselTimes: [21],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin    🎥07 🎠21
+  2: { times: [20],    carouselTimes: [12],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa   🎠12 🎥20
+  3: { times: [7, 21], carouselTimes: [],       voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu     🎥07 🎥21
+  4: { times: [],      carouselTimes: [12, 19], voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Kamis    🎠12 🎠19
+  5: { times: [7],     carouselTimes: [20],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Jumat    🎥07 🎠20
+  6: { times: [10],    carouselTimes: [],       voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Sabtu    🎥10
 };
 
 const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
