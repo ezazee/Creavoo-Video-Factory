@@ -54,28 +54,19 @@ function WatermarkOverlay({ handle, logoUrl }: { handle?: string; logoUrl?: stri
 }
 
 function PostPreview({
-  data, postType, slideIndex, imageUrl, carouselSlides,
+  data, slideIndex, carouselSlides,
   watermarkHandle, watermarkLogoUrl,
 }: {
-  data: PostData; postType: PostType; slideIndex: number;
-  imageUrl?: string | null; carouselSlides?: string[];
+  data: PostData; slideIndex: number;
+  carouselSlides?: string[];
   watermarkHandle?: string; watermarkLogoUrl?: string | null;
 }) {
   const ac = data.accent || "#6366f1";
   const tips = data.tips.slice(0, 5);
-  // carousel: cover(0) + 5 tips(1-5) + outro(6) = 7 slides
   const totalSlides = tips.length + 2;
 
-  // Show actual rendered image
-  if (postType === "single" && imageUrl) {
-    return (
-      <div className="rounded-xl overflow-hidden border border-white/[0.08]" style={{ aspectRatio: "1/1" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageUrl} alt={data.videoTitle} className="w-full h-full object-cover" />
-      </div>
-    );
-  }
-  if (postType === "carousel" && carouselSlides?.length) {
+  // Show actual rendered slides
+  if (carouselSlides?.length) {
     const url = carouselSlides[Math.min(slideIndex, carouselSlides.length - 1)];
     return (
       <div className="rounded-xl overflow-hidden border border-white/[0.08]" style={{ aspectRatio: "1/1" }}>
@@ -95,46 +86,6 @@ function PostPreview({
     backgroundImage: "linear-gradient(to right,#18181b 1px,transparent 1px),linear-gradient(to bottom,#18181b 1px,transparent 1px)",
     backgroundSize: "36px 36px", opacity: 0.05,
   };
-
-  // Single post mockup
-  if (postType === "single") {
-    return (
-      <div className="rounded-xl overflow-hidden border border-white/[0.08]"
-        style={{ aspectRatio: "1/1", ...bgStyle, position: "relative", padding: "22px 24px", display: "flex", flexDirection: "column" }}>
-        <div style={gridOverlay} />
-        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", height: "100%", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
-            <span style={{ fontSize: 28 }}>{data.introEmoji}</span>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 900, color: "#18181b", lineHeight: 1.2 }}>{data.videoTitle}</p>
-              <p style={{ fontSize: 9, color: "#71717a" }}>{data.subtitle}</p>
-            </div>
-          </div>
-          <div style={{ height: 1.5, background: `${ac}33`, borderRadius: 2 }} />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
-            {tips.map((tip, i) => (
-              <div key={i} style={{
-                flex: 1, display: "flex", alignItems: "center", gap: 7,
-                padding: "5px 8px", borderRadius: 7,
-                background: "rgba(255,255,255,0.6)", border: `1px solid ${ac}20`,
-              }}>
-                <div style={{ width: 16, height: 16, borderRadius: "50%", background: ac, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "white", flexShrink: 0 }}>{i + 1}</div>
-                <span style={{ fontSize: 14, flexShrink: 0 }}>{tip.emoji}</span>
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 800, color: "#18181b" }}>{tip.title}</p>
-                  <p style={{ fontSize: 8, color: "#71717a" }}>{tip.subtitle}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: ac, borderRadius: 7, padding: "6px", textAlign: "center" }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: "white" }}>{data.ctaText}</span>
-          </div>
-        </div>
-        <WatermarkOverlay handle={watermarkHandle} logoUrl={watermarkLogoUrl} />
-      </div>
-    );
-  }
 
   // Carousel mockup — show current slide
   const renderCarouselSlide = () => {
@@ -198,7 +149,6 @@ export default function PostPage() {
   const [useKnowledge, setUseKnowledge] = useState(true);
   const [step, setStep] = useState<Step>("idle");
   const [postData, setPostData] = useState<PostData | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [carouselSlides, setCarouselSlides] = useState<string[]>([]);
   const [slideIndex, setSlideIndex] = useState(0);
   const [runId, setRunId] = useState<number | null>(null);
@@ -213,7 +163,6 @@ export default function PostPage() {
   const [publishUrl, setPublishUrl] = useState<string | null>(null);
   const [published, setPublished] = useState(false);
 
-  const postType = "carousel" as const;
   const totalSlides = (postData?.tips.slice(0, 5).length ?? 5) + 2;
 
   useEffect(() => {
@@ -264,17 +213,13 @@ export default function PostPage() {
         }
         const res = await fetch(`/api/image-result?runId=${runId}`);
         const d = await res.json();
-        if (d.type === "carousel" && d.slides?.length) {
+        if (d.slides?.length) {
           setCarouselSlides(d.slides);
           setSlideIndex(0);
           setStep("done");
           saveImageHistory(runId, postDataRef.current, "carousel", undefined, d.slides);
-        } else if (d.imageUrl) {
-          setImageUrl(d.imageUrl);
-          setStep("done");
-          saveImageHistory(runId, postDataRef.current, "image", d.imageUrl, undefined);
         } else {
-          setStep("error"); setError("Gambar tidak ditemukan.");
+          setStep("error"); setError("Slide tidak ditemukan.");
         }
       } catch { /* retry */ }
     }, 8000);
@@ -284,7 +229,7 @@ export default function PostPage() {
   const generate = async () => {
     if (!topic.trim()) return;
     setStep("generating"); setError(null); setPostData(null);
-    setImageUrl(null); setCarouselSlides([]); setSlideIndex(0);
+    setCarouselSlides([]); setSlideIndex(0);
     try {
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -298,11 +243,11 @@ export default function PostPage() {
 
   const render = async () => {
     if (!postData) return;
-    setStep("rendering"); setError(null); setImageUrl(null); setCarouselSlides([]); setPublished(false); setPublishUrl(null);
+    setStep("rendering"); setError(null); setCarouselSlides([]); setPublished(false); setPublishUrl(null);
     try {
       const res = await fetch("/api/render-image", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...postData, watermarkHandle, watermarkLogoUrl, type: postType, totalSlides }),
+        body: JSON.stringify({ ...postData, watermarkHandle, watermarkLogoUrl, type: "carousel", totalSlides }),
       });
       if (!res.ok) throw new Error(await res.text());
       const d = await res.json();
@@ -311,16 +256,13 @@ export default function PostPage() {
   };
 
   const publishToInstagram = async () => {
-    const url = postType === "carousel" ? carouselSlides[0] : imageUrl;
-    if (!url || !postData) return;
+    if (!carouselSlides.length || !postData) return;
     setPublishing(true);
     try {
       const caption = postData.caption
         ? postData.caption + (postData.hashtags?.length ? "\n\n" + postData.hashtags.map(h => `#${h}`).join(" ") : "")
         : postData.videoTitle;
-      const body = postType === "carousel"
-        ? { platform: "instagram", imageUrls: carouselSlides, caption, mediaType: "carousel" }
-        : { platform: "instagram", imageUrl: url, caption, mediaType: "image" };
+      const body = { platform: "instagram", imageUrls: carouselSlides, caption, mediaType: "carousel" };
       const res = await fetch("/api/publish", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
@@ -338,7 +280,7 @@ export default function PostPage() {
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
 
-  const hasDoneImage = step === "done" && (imageUrl || carouselSlides.length > 0);
+  const hasDoneImage = step === "done" && carouselSlides.length > 0;
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden text-white">
@@ -454,13 +396,13 @@ export default function PostPage() {
               {postData ? (
                 <>
                   <PostPreview
-                    data={postData} postType={postType} slideIndex={slideIndex}
-                    imageUrl={imageUrl} carouselSlides={carouselSlides.length ? carouselSlides : undefined}
+                    data={postData} slideIndex={slideIndex}
+                    carouselSlides={carouselSlides.length ? carouselSlides : undefined}
                     watermarkHandle={watermarkHandle} watermarkLogoUrl={watermarkLogoUrl}
                   />
 
                   {/* Carousel slide nav */}
-                  {postType === "carousel" && (
+                  {(
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => setSlideIndex(i => Math.max(0, i - 1))}
@@ -507,19 +449,13 @@ export default function PostPage() {
                   {/* Done actions */}
                   {hasDoneImage && (
                     <div className="flex flex-col gap-2">
-                      {postType === "carousel" && carouselSlides.length > 0 ? (
+                      {carouselSlides.length > 0 && (
                         <a href={carouselSlides[0]} target="_blank" rel="noopener noreferrer"
                           className="py-2.5 rounded-xl font-bold text-white text-sm text-center"
                           style={{ background: "#22c55e" }}>
                           ↓ Download Slide 1 (lihat semua di Blob)
                         </a>
-                      ) : imageUrl ? (
-                        <a href={imageUrl} download={`post-${runId}.jpg`} target="_blank" rel="noopener noreferrer"
-                          className="py-2.5 rounded-xl font-bold text-white text-sm text-center"
-                          style={{ background: "#22c55e" }}>
-                          ↓ Download Gambar
-                        </a>
-                      ) : null}
+                      )}
 
                       {published ? (
                         publishUrl ? (
@@ -550,7 +486,7 @@ export default function PostPage() {
                 <div className="rounded-xl border border-white/[0.07] flex items-center justify-center"
                   style={{ aspectRatio: "1/1", background: "#111113" }}>
                   <div className="text-center px-8">
-                    <p className="text-4xl mb-3">{postType === "carousel" ? "🎠" : "🖼️"}</p>
+                    <p className="text-4xl mb-3">🎠</p>
                     <p className="text-xs text-zinc-600">Preview muncul setelah generate</p>
                   </div>
                 </div>
