@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const { scenes, videoTitle, subtitle, introEmoji, accent, tips, ctaText, voice, layout, watermarkHandle, watermarkLogoUrl } = body;
+  const { scenes, videoTitle, subtitle, introEmoji, accent, tips, ctaText, voice, layout, watermarkHandle, watermarkLogoUrl, profile } = body;
 
   // Guard: scenes harus ada dan valid
   if (!Array.isArray(scenes) || scenes.length === 0) {
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     ref: "main",
     inputs: {
       scenes_json: JSON.stringify(scenes),
-      props_json: JSON.stringify({ videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout: layout ?? "center", watermarkHandle: watermarkHandle ?? "", watermarkLogoUrl: watermarkLogoUrl ?? null }),
+      props_json: JSON.stringify({ videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout: layout ?? "center", watermarkHandle: watermarkHandle ?? "", watermarkLogoUrl: watermarkLogoUrl ?? null, profile: profile ?? "creavoo" }),
       voice: voice ?? process.env.TTS_VOICE ?? "id-ID-ArdiNeural",
     },
   };

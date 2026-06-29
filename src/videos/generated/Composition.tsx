@@ -32,6 +32,7 @@ export type GeneratedVideoProps = {
   layout?: VideoLayout;
   watermarkHandle?: string;
   watermarkLogo?: string; // filename di public/, e.g. "logo.png"
+  profile?: "creavoo" | "zaportfolio";
 };
 
 export const DEFAULT_ACCENT = "#6366f1";
@@ -55,6 +56,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   layout = "center",
   watermarkHandle = "",
   watermarkLogo,
+  profile = "creavoo",
 }) => {
   const TipComponent = TIP_SCENE_MAP[layout] ?? TipScene;
   const durations =
@@ -72,9 +74,11 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   const hasAudio = sceneDurations.length === SCENE_IDS.length;
   const accentColor = accent || DEFAULT_ACCENT;
 
+  const isZaportfolio = profile === "zaportfolio";
+
   return (
     <AbsoluteFill className="bg-zinc-950 font-sans">
-      <Background accent={accentColor} />
+      <Background accent={accentColor} profile={profile} />
       <Series>
         <Series.Sequence durationInFrames={durations[0]} premountFor={30}>
           <Intro
@@ -83,6 +87,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
             subtitle={subtitle}
             emoji={introEmoji}
             accent={accentColor}
+            profile={profile}
           />
         </Series.Sequence>
 
@@ -94,7 +99,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
               title={tip.title}
               subtitle={tip.subtitle}
               emoji={tip.emoji}
-              accent={accentColor}
+              accent={isZaportfolio ? "#1a3358" : accentColor}
               bullets={tip.bullets}
               visual={tip.visual}
             />
@@ -105,8 +110,9 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
           <Outro
             duration={durations[6]}
             tips={tips}
-            accent={accentColor}
+            accent={isZaportfolio ? "#1a3358" : accentColor}
             ctaText={ctaText}
+            profile={profile}
           />
         </Series.Sequence>
       </Series>

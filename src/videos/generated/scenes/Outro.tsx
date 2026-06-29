@@ -12,9 +12,12 @@ type Props = {
   tips: { title: string }[];
   accent: string;
   ctaText: string;
+  profile?: "creavoo" | "zaportfolio";
 };
 
-export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
+export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profile = "creavoo" }) => {
+  const navy = "#1a3358";
+  const isZap = profile === "zaportfolio";
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -47,8 +50,8 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
           <div
             className="flex flex-col gap-4 rounded-3xl p-8 w-full"
             style={{
-              background: `${accent}15`,
-              border: `2px solid ${accent}40`,
+              background: isZap ? `${navy}08` : `${accent}15`,
+              border: `2px solid ${isZap ? navy : accent}40`,
               opacity: listIn,
               transform: `scale(${0.9 + listIn * 0.1})`,
             }}
@@ -56,12 +59,12 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
             {tips.map((tip, i) => (
               <div key={i} className="flex items-center gap-5">
                 <div
-                  className="rounded-full flex items-center justify-center font-black text-white flex-shrink-0"
-                  style={{ width: 52, height: 52, background: accent, fontSize: 28 }}
+                  className="rounded-xl flex items-center justify-center font-black text-white flex-shrink-0"
+                  style={{ width: 52, height: 52, background: isZap ? navy : accent, fontSize: 28 }}
                 >
                   {i + 1}
                 </div>
-                <span className="font-bold text-zinc-900" style={{ fontSize: 38 }}>
+                <span className="font-bold" style={{ fontSize: 38, color: isZap ? navy : "#18181b" }}>
                   {tip.title}
                 </span>
               </div>
@@ -73,7 +76,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
               className="flex flex-col items-center gap-3"
               style={{ opacity: ctaIn }}
             >
-              <p className="font-black text-zinc-900 text-center" style={{ fontSize: 42 }}>
+              <p className="font-black text-center" style={{ fontSize: 42, color: isZap ? navy : "#18181b" }}>
                 {ctaText}
               </p>
               <svg
@@ -85,7 +88,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText }) => {
               >
                 <path
                   d="M12 4v16m0 0l-7-7m7 7l7-7"
-                  stroke={accent}
+                  stroke={isZap ? navy : accent}
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"

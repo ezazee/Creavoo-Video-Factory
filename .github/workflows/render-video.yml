@@ -14,30 +14,23 @@ on:
         default: "id-ID-ArdiNeural"
 
 jobs:
-  render:
+  # ── Job 1: Generate TTS + hitung total frames ──────────────────────────────
+  prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 10
+    outputs:
+      total_frames: ${{ steps.count.outputs.total_frames }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Install Python deps
-        run: pip install edge-tts
+      - run: npm ci
+      - run: pip install edge-tts mutagen
 
       - name: Generate voiceover MP3s
         run: |
@@ -50,14 +43,11 @@ jobs:
           out_dir = Path("public/voiceover/generated")
           out_dir.mkdir(parents=True, exist_ok=True)
 
-          # Selalu pakai edge-tts (gratis, konsisten, tidak pernah kehabisan quota).
-          # Kalau voice yang dikirim bukan edge-tts (mis. voice ID ElevenLabs lama),
-          # paksa ke default Indonesia biar suara selalu ada dan seragam.
           if not re.match(r'^[a-z]{2}-[A-Z]{2}-', voice):
               voice = "id-ID-ArdiNeural"
 
           async def gen_edgetts(text, voice_name, out_file):
-              import edge_tts, asyncio
+              import edge_tts
               for attempt in range(5):
                   try:
                       communicate = edge_tts.Communicate(text, voice_name)
@@ -85,14 +75,81 @@ jobs:
           SCENES_JSON: ${{ inputs.scenes_json }}
           VOICE: ${{ inputs.voice }}
 
-      - name: Render video with Remotion
+      - name: Compute total frames from MP3 durations
+        id: count
         run: |
-          PROPS=$(python - <<'PYEOF'
+          python3 - <<'PYEOF'
+          import glob, os
+          from mutagen.mp3 import MP3
+
+          mp3s = sorted(glob.glob("public/voiceover/generated/*.mp3"))
+          if not mp3s:
+              total_secs = 47.0
+          else:
+              total_secs = sum(MP3(f).info.length for f in mp3s)
+
+          total_frames = int(total_secs * 30) + 90  # 30fps + 3s tail buffer
+          print(f"Total audio: {total_secs:.1f}s → {total_frames} frames")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"total_frames={total_frames}\n")
+          PYEOF
+
+      - name: Upload voiceover artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voiceover
+          path: public/voiceover/generated/
+          retention-days: 1
+
+  # ── Job 2: Render 4 chunks secara paralel ─────────────────────────────────
+  render:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        chunk: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: npm ci
+
+      - name: Download voiceover
+        uses: actions/download-artifact@v4
+        with:
+          name: voiceover
+          path: public/voiceover/generated/
+
+      - name: Render chunk ${{ matrix.chunk }}
+        run: |
+          TOTAL=${{ needs.prepare.outputs.total_frames }}
+          CHUNK=${{ matrix.chunk }}
+          CHUNKS=4
+          SIZE=$(( (TOTAL + CHUNKS - 1) / CHUNKS ))
+          START=$(( CHUNK * SIZE ))
+          END=$(( START + SIZE - 1 ))
+          [ $END -ge $TOTAL ] && END=$(( TOTAL - 1 ))
+
+          echo "Chunk $CHUNK: frames $START–$END of $TOTAL"
+
+          if [ $START -ge $TOTAL ]; then
+            echo "Chunk $CHUNK is beyond total frames, skipping."
+            mkdir -p out && touch out/chunk-${CHUNK}.mp4
+            exit 0
+          fi
+
+          PROPS=$(python3 - <<'PYEOF'
           import json, os, urllib.request
           props = json.loads(os.environ["PROPS_JSON"])
           props["sceneDurations"] = []
 
-          # Download watermark logo jika ada
           logo_url = props.pop("watermarkLogoUrl", None)
           if logo_url:
               import pathlib
@@ -105,10 +162,59 @@ jobs:
           print(json.dumps(props))
           PYEOF
           )
+
           mkdir -p out
-          npx remotion render GeneratedVideo out/video.mp4 --props="$PROPS"
+          npx remotion render GeneratedVideo out/chunk-${CHUNK}.mp4 \
+            --props="$PROPS" \
+            --frames=$START-$END \
+            --concurrency=2
         env:
           PROPS_JSON: ${{ inputs.props_json }}
+
+      - name: Upload chunk ${{ matrix.chunk }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunk-${{ matrix.chunk }}
+          path: out/chunk-${{ matrix.chunk }}.mp4
+          retention-days: 1
+
+  # ── Job 3: Merge semua chunk + upload ─────────────────────────────────────
+  merge:
+    needs: [prepare, render]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+
+      - name: Download all chunks
+        uses: actions/download-artifact@v4
+        with:
+          pattern: chunk-*
+          path: out/chunks/
+          merge-multiple: false
+
+      - name: Merge chunks with ffmpeg
+        run: |
+          mkdir -p out
+          > /tmp/filelist.txt
+          for i in 0 1 2 3; do
+            F="out/chunks/chunk-${i}/chunk-${i}.mp4"
+            if [ -f "$F" ] && [ -s "$F" ]; then
+              echo "file '$(realpath "$F")'" >> /tmp/filelist.txt
+              echo "  ✓ chunk-${i} added"
+            else
+              echo "  ⚠ chunk-${i} missing or empty, skipping"
+            fi
+          done
+          echo "--- filelist ---"
+          cat /tmp/filelist.txt
+          ffmpeg -f concat -safe 0 -i /tmp/filelist.txt -c copy out/video.mp4
+          echo "✓ Merge done: $(du -sh out/video.mp4 | cut -f1)"
 
       - name: Upload to Vercel Blob
         run: |
