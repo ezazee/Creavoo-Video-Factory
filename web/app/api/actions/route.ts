@@ -18,7 +18,11 @@ export async function GET(req: NextRequest) {
   const run = await runRes.json();
   const jobs = await jobsRes.json();
 
-  const job = jobs.jobs?.[0];
+  // Ambil job yang sedang berjalan, atau job terakhir kalau semua sudah selesai
+  const allJobs: { id: number; name: string; status: string; conclusion: string | null; steps?: unknown[] }[] = jobs.jobs ?? [];
+  const activeJob = allJobs.find(j => j.status === "in_progress") ?? allJobs[allJobs.length - 1];
+  const job = activeJob;
+
   const steps = (job?.steps ?? []).map((s: {
     name: string; status: string; conclusion: string | null;
     started_at: string | null; completed_at: string | null; number: number;
@@ -31,7 +35,7 @@ export async function GET(req: NextRequest) {
     number: s.number,
   }));
 
-  // Try to get frame progress from render step logs
+  // Frame progress dari render step yang aktif
   let renderFrame: number | null = null;
   let renderTotal: number | null = null;
   const renderStep = steps.find((s: { name: string; status: string }) =>
@@ -45,7 +49,6 @@ export async function GET(req: NextRequest) {
       );
       if (logsRes.ok) {
         const logs = await logsRes.text();
-        // Remotion logs: "Rendering frame 23/2406"  or  "23/2406"
         const matches = [...logs.matchAll(/(\d+)\/(\d+)/g)];
         if (matches.length) {
           const last = matches[matches.length - 1];
@@ -71,12 +74,10 @@ export async function DELETE(req: NextRequest) {
   const { runId } = await req.json();
   if (!runId) return NextResponse.json({ error: "runId required" }, { status: 400 });
 
-  // Cancel first if still running
   await fetch(`https://api.github.com/repos/${REPO}/actions/runs/${runId}/cancel`, {
     method: "POST", headers: GH_HEADERS,
   });
 
-  // Wait briefly then delete
   await new Promise((r) => setTimeout(r, 1500));
   const res = await fetch(`https://api.github.com/repos/${REPO}/actions/runs/${runId}`, {
     method: "DELETE", headers: GH_HEADERS,
