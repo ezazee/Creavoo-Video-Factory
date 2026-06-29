@@ -19,14 +19,13 @@ export async function GET(req: NextRequest) {
   const jobs = await jobsRes.json();
 
   // Ambil job yang sedang berjalan, atau job terakhir kalau semua sudah selesai
-  const allJobs: { id: number; name: string; status: string; conclusion: string | null; steps?: unknown[] }[] = jobs.jobs ?? [];
+  type GHStep = { name: string; status: string; conclusion: string | null; started_at: string | null; completed_at: string | null; number: number };
+  type GHJob = { id: number; name: string; status: string; conclusion: string | null; steps?: GHStep[] };
+  const allJobs: GHJob[] = jobs.jobs ?? [];
   const activeJob = allJobs.find(j => j.status === "in_progress") ?? allJobs[allJobs.length - 1];
   const job = activeJob;
 
-  const steps = (job?.steps ?? []).map((s: {
-    name: string; status: string; conclusion: string | null;
-    started_at: string | null; completed_at: string | null; number: number;
-  }) => ({
+  const steps = (job?.steps ?? []).map((s) => ({
     name: s.name,
     status: s.status,
     conclusion: s.conclusion,
@@ -38,7 +37,7 @@ export async function GET(req: NextRequest) {
   // Frame progress dari render step yang aktif
   let renderFrame: number | null = null;
   let renderTotal: number | null = null;
-  const renderStep = steps.find((s: { name: string; status: string }) =>
+  const renderStep = steps.find(s =>
     s.name === "Render video with Remotion" && s.status === "in_progress"
   );
   if (renderStep && job?.id) {
