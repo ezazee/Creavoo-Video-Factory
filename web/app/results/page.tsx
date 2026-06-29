@@ -222,7 +222,8 @@ export default function ResultsPage() {
     setPublishing(platform); setPublishErr(null);
     try {
       const isImage = item.mediaType === "image" || item.mediaType === "carousel";
-      const publishProfile = activeProfile === "all" ? (localStorage.getItem("vf_profile") ?? "creavoo") : activeProfile;
+      // Selalu pakai profile dari item, bukan dari tab aktif — supaya item Zaportfolio tidak salah upload ke Creavoo
+      const publishProfile = item.profile ?? (activeProfile === "all" ? (localStorage.getItem("vf_profile") ?? "creavoo") : activeProfile);
       const body = isImage
         ? item.mediaType === "carousel"
           ? { platform: "instagram", imageUrls: item.imageUrls, caption: captionText(item), mediaType: "carousel", profile: publishProfile }

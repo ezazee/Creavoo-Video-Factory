@@ -333,7 +333,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true, profile: activeProfile }),
+        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true, profile: item.profile ?? activeProfile }),
       });
       const d = await res.json();
       if (!res.ok) { setError(d.error ?? "Upload gagal"); return; }
