@@ -137,32 +137,32 @@ export async function POST(req: NextRequest) {
   const { topic, useKnowledge = true } = await req.json();
   if (!topic) return NextResponse.json({ error: "topic required" }, { status: 400 });
 
-  // Memory selalu dibaca regardless useKnowledge
   const knowledge = useKnowledge ? loadCreavooKnowledge() : "";
-  const previousTitles = await readMemory();
-  const memoryBlock = buildMemoryBlock(previousTitles);
 
-  // Ambil analytics hint (best performing content) — non-blocking, ignore error
-  let analyticsHint = "";
-  try {
-    const zernioKey = process.env.ZERNIO_API_KEY;
-    if (zernioKey) {
-      const r = await fetch("https://zernio.com/api/v1/analytics/daily-metrics?fromDate=" +
-        new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0] +
-        "&toDate=" + new Date().toISOString().split("T")[0],
-        { headers: { Authorization: `Bearer ${zernioKey}` }, signal: AbortSignal.timeout(5000) }
-      );
-      if (r.ok) {
+  // Jalankan memory + analytics secara paralel
+  const [previousTitles, analyticsHint] = await Promise.all([
+    readMemory(),
+    (async () => {
+      try {
+        const zernioKey = process.env.ZERNIO_API_KEY;
+        if (!zernioKey) return "";
+        const r = await fetch("https://zernio.com/api/v1/analytics/daily-metrics?fromDate=" +
+          new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0] +
+          "&toDate=" + new Date().toISOString().split("T")[0],
+          { headers: { Authorization: `Bearer ${zernioKey}` }, signal: AbortSignal.timeout(3000) }
+        );
+        if (!r.ok) return "";
         const d = await r.json();
         const metrics = Array.isArray(d) ? d : (d?.data ?? []);
-        if (metrics.length) {
-          const top = [...metrics].sort((a, b) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 3);
-          const topDates = top.map((m: { date?: string; views?: number }) => `${m.date}: ${m.views} views`).join(", ");
-          analyticsHint = `\n\n## ANALYTICS HINT — Performa konten 30 hari terakhir:\nHari dengan views tertinggi: ${topDates}\nGunakan ini untuk pilih topik/angle yang sedang relevan dengan audiens.\n`;
-        }
-      }
-    }
-  } catch { /* non-blocking */ }
+        if (!metrics.length) return "";
+        const top = [...metrics].sort((a: { views?: number }, b: { views?: number }) => (b.views ?? 0) - (a.views ?? 0)).slice(0, 3);
+        const topDates = top.map((m: { date?: string; views?: number }) => `${m.date}: ${m.views} views`).join(", ");
+        return `\n\n## ANALYTICS HINT — Performa konten 30 hari terakhir:\nHari dengan views tertinggi: ${topDates}\nGunakan ini untuk pilih topik/angle yang sedang relevan dengan audiens.\n`;
+      } catch { return ""; }
+    })(),
+  ]);
+
+  const memoryBlock = buildMemoryBlock(previousTitles);
 
   let data = null;
   let lastRaw = "";
@@ -219,8 +219,8 @@ export async function POST(req: NextRequest) {
   data.hashtags = data.hashtags.map((h: string) => h.replace(/^#/, "")).slice(0, 15);
   data.knowledgeUsed = useKnowledge;
 
-  // Simpan "topik → judul" ke memory — await biar tersimpan sebelum response balik
-  await appendMemory(`${topic} → ${data.videoTitle}`);
+  // Fire-and-forget — tidak perlu tunggu sebelum return response
+  appendMemory(`${topic} → ${data.videoTitle}`).catch(() => {});
 
   return NextResponse.json(data);
 }

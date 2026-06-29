@@ -88,6 +88,8 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [showResetMemory, setShowResetMemory] = useState(false);
   const [resettingMemory, setResettingMemory] = useState(false);
+  const [genLogs, setGenLogs] = useState<{ ts: number; msg: string; type: "info" | "ok" | "error" }[]>([]);
+  const genLogsRef = useRef<typeof genLogs>([]);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const pollCleanupRef = useRef<{ timeout: ReturnType<typeof setTimeout> | null; interval: ReturnType<typeof setInterval> | null }>({ timeout: null, interval: null });
 
@@ -185,33 +187,56 @@ export default function Home() {
   };
 
 
+  const addLog = (msg: string, type: "info" | "ok" | "error" = "info") => {
+    const entry = { ts: Date.now(), msg, type };
+    genLogsRef.current = [...genLogsRef.current, entry];
+    setGenLogs([...genLogsRef.current]);
+  };
+
   const generate = async () => {
     if (!topic.trim()) return;
+    genLogsRef.current = [];
+    setGenLogs([]);
     setStep("generating"); setError(null); setPreview(null); setVideoUrl(null);
     const id = Date.now().toString();
     setActiveId(id);
+    const t0 = Date.now();
     try {
+      addLog("Memulai generate…");
+      addLog(`Topik: "${topic}"`);
+      if (activeProfile === "creavoo" && useKnowledge) addLog("Memuat knowledge base Creavoo…");
+      addLog("Mengambil memory topik sebelumnya…");
+      addLog("Mengirim ke AI untuk menulis script…");
+
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data: SceneData = await res.json();
+      addLog(`Script selesai dalam ${((Date.now() - t0) / 1000).toFixed(1)}s — "${data.videoTitle}"`, "ok");
+      addLog(`${data.tips.length} tips · layout: ${data.layout ?? "center"}`, "ok");
       setPreview(data);
+
       const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString(), caption: data.caption, hashtags: data.hashtags, autoTikTok, autoInstagram, igShareToFeed, profile: activeProfile };
       const updated = [newItem, ...history];
       saveHistory(updated);
-      setStep("rendering");
+
+      addLog("Trigger GitHub Actions untuk render…");
       const renderRes = await fetch("/api/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, voice, watermarkHandle, watermarkLogoUrl: activeProfile === "zaportfolio" ? null : watermarkLogoUrl }),
       });
       if (!renderRes.ok) throw new Error(await renderRes.text());
       const { runId } = await renderRes.json();
+      addLog(`GitHub Actions run #${runId} dimulai`, "ok");
       saveHistory(updated.map((h) => (h.id === id ? { ...h, runId } : h)));
+      setStep("rendering");
       pollStatus(id, runId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Terjadi error");
+      const msg = e instanceof Error ? e.message : "Terjadi error";
+      addLog(msg, "error");
+      setError(msg);
       setStep("error");
       setHistory((prev) => {
         const updated = prev.map((h) => (h.id === id ? { ...h, status: "failed" as const } : h));
@@ -610,11 +635,38 @@ export default function Home() {
         {/* ── Generating ── */}
 
         {step === "generating" && (
-          <div className="flex flex-col items-center justify-center gap-5 text-center px-8" style={{ flex: 1, minHeight: 0 }}>
-            <div className="w-12 h-12 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${accentColor}40`, borderTopColor: accentColor }} />
-            <div>
-              <p className="text-white font-bold text-lg">AI sedang menulis script…</p>
-              <p className="text-zinc-500 text-sm mt-1">Biasanya 5–15 detik</p>
+          <div className="flex flex-col items-center justify-center gap-6 px-8" style={{ flex: 1, minHeight: 0 }}>
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0" style={{ borderColor: `${accentColor}40`, borderTopColor: accentColor }} />
+              <p className="text-white font-bold text-base">AI sedang menulis script…</p>
+            </div>
+            {/* Live log terminal */}
+            <div className="w-full max-w-lg rounded-2xl border border-white/[0.06] overflow-hidden" style={{ background: "#0d0d0f" }}>
+              <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/[0.06]">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+                <span className="text-[10px] text-zinc-600 ml-2 font-mono">generate.log</span>
+              </div>
+              <div className="px-4 py-3 flex flex-col gap-1.5 font-mono min-h-[120px]">
+                {genLogs.map((log, i) => {
+                  const elapsed = i === 0 ? 0 : ((log.ts - genLogs[0].ts) / 1000).toFixed(1);
+                  return (
+                    <div key={i} className="flex items-start gap-2.5 text-xs">
+                      <span className="text-zinc-700 flex-shrink-0 tabular-nums">{i === 0 ? "+0.0s" : `+${elapsed}s`}</span>
+                      <span className={log.type === "ok" ? "text-green-400" : log.type === "error" ? "text-red-400" : "text-zinc-400"}>
+                        {log.type === "ok" ? "✓ " : log.type === "error" ? "✗ " : "› "}
+                        {log.msg}
+                      </span>
+                    </div>
+                  );
+                })}
+                {/* blinking cursor */}
+                <div className="flex items-center gap-2.5 text-xs">
+                  <span className="text-zinc-700 flex-shrink-0">      </span>
+                  <span className="w-1.5 h-3.5 bg-zinc-500 animate-pulse rounded-sm" />
+                </div>
+              </div>
             </div>
           </div>
         )}
