@@ -12,6 +12,9 @@ on:
       total_slides:
         description: "Total slides for carousel (cover + tips + outro)"
         default: "7"
+      style:
+        description: "Visual style: creavoo (dark) or zaportfolio (light)"
+        default: "creavoo"
 
 jobs:
   render:
@@ -45,12 +48,14 @@ jobs:
               dest.parent.mkdir(parents=True, exist_ok=True)
               urllib.request.urlretrieve(logo_url, dest)
               props["watermarkLogo"] = f"watermark-logo.{ext}"
+          props["style"] = os.environ.get("STYLE", "creavoo")
           print(json.dumps(props))
           PYEOF
           )
           echo "base_props=$BASE_PROPS" >> $GITHUB_OUTPUT
         env:
           PROPS_JSON: ${{ inputs.props_json }}
+          STYLE: ${{ inputs.style }}
 
       - name: Render single post
         if: ${{ inputs.type == 'single' }}

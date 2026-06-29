@@ -10,7 +10,7 @@ const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-schedule-secret");
   const expectedSecret = process.env.SCHEDULE_WEBHOOK_SECRET;
-  if (expectedSecret && secret !== expectedSecret) {
+  if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -52,7 +52,10 @@ export async function POST(req: NextRequest) {
     ? job.caption + (job.hashtags?.length ? "\n\n" + job.hashtags.map(h => `#${h}`).join(" ") : "")
     : "";
 
-  const zernioKey = process.env.ZERNIO_API_KEY;
+  const jobProfile = job.profile ?? "creavoo";
+  const zernioKey = jobProfile === "zaportfolio"
+    ? process.env.ZERNIO_API_KEY_ZAPORTFOLIO
+    : (process.env.ZERNIO_API_KEY_CREAVOO ?? process.env.ZERNIO_API_KEY);
   if (zernioKey) {
     const accounts = await getAccounts(zernioKey);
 

@@ -15,10 +15,13 @@ async function getAccounts(token: string): Promise<Account[]> {
 }
 
 export async function POST(req: NextRequest) {
-  const token = process.env.ZERNIO_API_KEY;
-  if (!token) return NextResponse.json({ error: "ZERNIO_API_KEY not set" }, { status: 500 });
-
   const body = await req.json();
+  const { profile } = body;
+  const token = profile === "zaportfolio"
+    ? process.env.ZERNIO_API_KEY_ZAPORTFOLIO
+    : (process.env.ZERNIO_API_KEY_CREAVOO ?? process.env.ZERNIO_API_KEY);
+  if (!token) return NextResponse.json({ error: "ZERNIO_API_KEY not set for this profile" }, { status: 500 });
+
   const {
     platform,
     // video

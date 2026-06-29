@@ -167,6 +167,7 @@ export const RemotionRoot: React.FC = () => {
           ],
           ctaText: "Follow @creavoo.id 🚀",
           watermarkHandle: "@creavoo.id",
+          style: "",
         } satisfies InstagramPostProps}
       />
       <Composition
@@ -192,6 +193,7 @@ export const RemotionRoot: React.FC = () => {
           watermarkHandle: "@creavoo.id",
           slideIndex: 0,
           totalSlides: 7,
+          style: "",
         } satisfies InstagramCarouselSlideProps}
       />
     </>

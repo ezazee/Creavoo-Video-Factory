@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 const ZERNIO_BASE = "https://zernio.com/api/v1";
 
 export async function GET(req: NextRequest) {
-  const token = process.env.ZERNIO_API_KEY;
-  if (!token) return NextResponse.json({ error: "ZERNIO_API_KEY not set" }, { status: 500 });
-
   const { searchParams } = new URL(req.url);
+  const profile = searchParams.get("profile") ?? "creavoo";
+  const token = profile === "zaportfolio"
+    ? process.env.ZERNIO_API_KEY_ZAPORTFOLIO
+    : (process.env.ZERNIO_API_KEY_CREAVOO ?? process.env.ZERNIO_API_KEY);
+  if (!token) return NextResponse.json({ error: "ZERNIO_API_KEY not set for this profile" }, { status: 500 });
+
   const days = parseInt(searchParams.get("days") ?? "30");
 
   const toDate = new Date();

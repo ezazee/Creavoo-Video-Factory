@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "./components/Sidebar";
+import { Sk, SkeletonStyle } from "./components/Skeleton";
 
 type Step = "idle" | "generating" | "rendering" | "done" | "error";
 type HistoryItem = {
@@ -10,6 +11,7 @@ type HistoryItem = {
   caption?: string; hashtags?: string[];
   tiktokUrl?: string; instagramUrl?: string;
   autoTikTok?: boolean; autoInstagram?: boolean; igShareToFeed?: boolean;
+  profile?: string;
 };
 type SceneData = {
   videoTitle: string; subtitle: string; introEmoji: string; accent: string;
@@ -20,6 +22,17 @@ type SceneData = {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
+const PROFILES = [
+  { id: "creavoo", label: "Creavoo", color: "#00AEEF" },
+  { id: "zaportfolio", label: "Zaportfolio", color: "#6366f1" },
+];
+
+const CONTENT_THEMES = [
+  { id: "it-developer", label: "IT Developer", emoji: "💻" },
+  { id: "ai",           label: "AI",           emoji: "🤖" },
+  { id: "design",       label: "Design",       emoji: "🎨" },
+  { id: "tips-trick",   label: "Tips & Trick", emoji: "⚡" },
+];
 
 const VOICES = [
   { id: "id-ID-ArdiNeural", label: "Ardi", desc: "Indo · Male", flag: "🇮🇩" },
@@ -45,6 +58,8 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [activeProfile, setActiveProfile] = useState("creavoo");
+  const [contentTheme, setContentTheme] = useState("it-developer");
   const [topic, setTopic] = useState("");
   const [useKnowledge, setUseKnowledge] = useState(true);
   const [voice, setVoice] = useState("id-ID-ArdiNeural");
@@ -68,14 +83,23 @@ export default function Home() {
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [loadingWatermark, setLoadingWatermark] = useState(true);
   const [publishing, setPublishing] = useState<"tiktok" | "instagram" | null>(null);
   const [copied, setCopied] = useState(false);
   const [showResetMemory, setShowResetMemory] = useState(false);
   const [resettingMemory, setResettingMemory] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const pollCleanupRef = useRef<{ timeout: ReturnType<typeof setTimeout> | null; interval: ReturnType<typeof setInterval> | null }>({ timeout: null, interval: null });
 
-  const saveWatermark = async (handle: string, logoUrl: string | null) => {
-    await fetch("/api/watermark", {
+  useEffect(() => {
+    return () => {
+      if (pollCleanupRef.current.timeout) clearTimeout(pollCleanupRef.current.timeout);
+      if (pollCleanupRef.current.interval) clearInterval(pollCleanupRef.current.interval);
+    };
+  }, []);
+
+  const saveWatermark = async (handle: string, logoUrl: string | null, profile = activeProfile) => {
+    await fetch(`/api/watermark?profile=${profile}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ handle, logoUrl }),
     }).catch(() => {});
@@ -95,12 +119,22 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Load watermark dari Blob
-    fetch("/api/watermark").then(r => r.json()).then(d => {
-      if (d.handle) setWatermarkHandle(d.handle);
-      if (d.logoUrl) setWatermarkLogoUrl(d.logoUrl);
-    }).catch(() => {});
+    const stored = localStorage.getItem("vf_profile");
+    if (stored === "zaportfolio") setActiveProfile("zaportfolio");
+  }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingWatermark(true);
+    fetch(`/api/watermark?profile=${activeProfile}`, { signal: controller.signal })
+      .then(r => r.json()).then(d => {
+        setWatermarkHandle(d.handle ?? "");
+        setWatermarkLogoUrl(d.logoUrl ?? null);
+      }).catch(() => {}).finally(() => setLoadingWatermark(false));
+    return () => controller.abort();
+  }, [activeProfile]); // eslint-disable-line
+
+  useEffect(() => {
     const saved: HistoryItem[] = JSON.parse(localStorage.getItem("vf_history") ?? "[]");
     if (saved.length) setHistory(saved);
 
@@ -112,8 +146,7 @@ export default function Home() {
       setStep("rendering");
       pollStatus(latest.id, latest.runId!);
     }
-
-  }, []); // ponytail: eslint-disable-line — pollStatus stabil, tidak perlu di deps
+  }, []); // eslint-disable-line
 
   const saveHistory = (items: HistoryItem[]) => {
     setHistory(items);
@@ -140,7 +173,9 @@ export default function Home() {
   const fetchTrends = async () => {
     setLoadingTrends(true);
     try {
-      const res = await fetch("/api/trends");
+      const params = new URLSearchParams({ profile: activeProfile });
+      if (activeProfile === "zaportfolio") params.set("contentTheme", contentTheme);
+      const res = await fetch(`/api/trends?${params}`);
       const data = await res.json();
       const topics: string[] = data.topics ?? [];
       setTrendTopics(topics);
@@ -158,18 +193,18 @@ export default function Home() {
     try {
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, useKnowledge }),
+        body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data: SceneData = await res.json();
       setPreview(data);
-      const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString(), caption: data.caption, hashtags: data.hashtags, autoTikTok, autoInstagram, igShareToFeed };
+      const newItem: HistoryItem = { id, title: data.videoTitle, status: "rendering", accent: data.accent, createdAt: new Date().toISOString(), caption: data.caption, hashtags: data.hashtags, autoTikTok, autoInstagram, igShareToFeed, profile: activeProfile };
       const updated = [newItem, ...history];
       saveHistory(updated);
       setStep("rendering");
       const renderRes = await fetch("/api/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, voice, watermarkHandle, watermarkLogoUrl }),
+        body: JSON.stringify({ ...data, voice, watermarkHandle, watermarkLogoUrl: activeProfile === "zaportfolio" ? null : watermarkLogoUrl }),
       });
       if (!renderRes.ok) throw new Error(await renderRes.text());
       const { runId } = await renderRes.json();
@@ -211,37 +246,45 @@ export default function Home() {
   };
 
   const pollStatus = (id: string, runId: number) => {
+    if (pollCleanupRef.current.timeout) clearTimeout(pollCleanupRef.current.timeout);
+    if (pollCleanupRef.current.interval) clearInterval(pollCleanupRef.current.interval);
+
     pollActionLogs(runId);
     const poll = async () => {
-      const res = await fetch(`/api/status?runId=${runId}`);
-      const data = await res.json();
-      pollActionLogs(runId);
-      if (data.status === "completed" && data.videoUrl) {
-        setVideoUrl(data.videoUrl); setStep("done");
-        let doneItem: HistoryItem | undefined;
-        setHistory((prev) => {
-          const updated = prev.map((h) => h.id === id ? { ...h, status: "done" as const, videoUrl: data.videoUrl, thumbnailUrl: data.thumbnailUrl ?? h.thumbnailUrl } : h);
-          doneItem = updated.find((h) => h.id === id);
-          localStorage.setItem("vf_history", JSON.stringify(updated));
-          return updated;
-        });
-        // Auto-upload kalau preferensi tersimpan di item (bukan state global,
-        // biar tetap jalan walau halaman di-resume / di-mount ulang)
-        if (doneItem) {
-          if (doneItem.autoTikTok && !doneItem.tiktokUrl) publish("tiktok", doneItem);
-          if (doneItem.autoInstagram && !doneItem.instagramUrl) publish("instagram", doneItem);
+      try {
+        const res = await fetch(`/api/status?runId=${runId}`);
+        const data = await res.json();
+        pollActionLogs(runId);
+        if (data.status === "completed" && data.videoUrl) {
+          if (pollCleanupRef.current.interval) clearInterval(pollCleanupRef.current.interval);
+          setVideoUrl(data.videoUrl); setStep("done");
+          let doneItem: HistoryItem | undefined;
+          setHistory((prev) => {
+            const updated = prev.map((h) => h.id === id ? { ...h, status: "done" as const, videoUrl: data.videoUrl, thumbnailUrl: data.thumbnailUrl ?? h.thumbnailUrl } : h);
+            doneItem = updated.find((h) => h.id === id);
+            localStorage.setItem("vf_history", JSON.stringify(updated));
+            return updated;
+          });
+          if (doneItem) {
+            if (doneItem.autoTikTok && !doneItem.tiktokUrl) publish("tiktok", doneItem);
+            if (doneItem.autoInstagram && !doneItem.instagramUrl) publish("instagram", doneItem);
+          }
+        } else if (data.status === "failed") {
+          if (pollCleanupRef.current.interval) clearInterval(pollCleanupRef.current.interval);
+          setError("Render gagal. Cek GitHub Actions untuk detail."); setStep("error");
+          setHistory((prev) => {
+            const updated = prev.map((h) => (h.id === id ? { ...h, status: "failed" as const } : h));
+            localStorage.setItem("vf_history", JSON.stringify(updated));
+            return updated;
+          });
+        } else {
+          pollCleanupRef.current.timeout = setTimeout(poll, 15000);
         }
-      } else if (data.status === "failed") {
-        setError("Render gagal. Cek GitHub Actions untuk detail."); setStep("error");
-        setHistory((prev) => {
-          const updated = prev.map((h) => (h.id === id ? { ...h, status: "failed" as const } : h));
-          localStorage.setItem("vf_history", JSON.stringify(updated));
-          return updated;
-        });
-      } else { setTimeout(poll, 15000); }
+      } catch { pollCleanupRef.current.timeout = setTimeout(poll, 15000); }
     };
-    setTimeout(poll, 20000);
+    pollCleanupRef.current.timeout = setTimeout(poll, 20000);
     const logsInterval = setInterval(() => pollActionLogs(runId), 15000);
+    pollCleanupRef.current.interval = logsInterval;
     setTimeout(() => clearInterval(logsInterval), 30 * 60 * 1000);
   };
 
@@ -265,7 +308,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true }),
+        body: JSON.stringify({ platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true, profile: activeProfile }),
       });
       const d = await res.json();
       if (!res.ok) { setError(d.error ?? "Upload gagal"); return; }
@@ -294,247 +337,280 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden text-white">
-
+      <SkeletonStyle />
       <Sidebar history={history} onSelectHistory={(id) => { const item = history.find(h => h.id === id); if (item) selectHistory(item); }} />
 
       {/* ── Main ── */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
         {/* ── Idle / Form ── */}
         {step === "idle" && (
-          <div className="max-w-2xl mx-auto px-8 py-10">
-            <div className="mb-8">
-              <h2 className="text-3xl font-black text-white leading-tight">
-                Buat <span style={{ color: "#00AEEF" }}>video pendek</span> viral<br />secara otomatis
-              </h2>
-              <p className="text-zinc-500 text-sm mt-2">Ketik topik, klik generate — AI pilih template & warna otomatis.</p>
-            </div>
+          <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
 
-            {/* ── Input Card ── */}
-            <div className="rounded-2xl border border-white/[0.07] overflow-hidden" style={{ background: "#111113" }}>
+            {/* LEFT — scrollable form */}
+            <div style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: "36px 40px" }}>
+
+              {/* Header */}
+              <div style={{ marginBottom: 28 }}>
+                <h2 style={{ fontSize: 26, fontWeight: 900, color: "#fff", lineHeight: 1.25, margin: 0 }}>
+                  Buat <span style={{ color: "#00AEEF" }}>video pendek</span> viral secara otomatis
+                </h2>
+                <p style={{ color: "#52525b", fontSize: 13, marginTop: 6 }}>Ketik topik, klik generate — AI pilih template & warna otomatis.</p>
+              </div>
+
+              {/* Profile tabs */}
+              <div style={{ display: "flex", gap: 6, padding: 4, borderRadius: 12, background: "#111113", border: "1px solid #ffffff0a", width: "fit-content", marginBottom: 20 }}>
+                {PROFILES.map(p => {
+                  const active = activeProfile === p.id;
+                  return (
+                    <button key={p.id} onClick={() => { setActiveProfile(p.id); localStorage.setItem("vf_profile", p.id); setTrendTopics([]); }}
+                      style={{ padding: "6px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer", border: active ? `1px solid ${p.color}40` : "1px solid transparent", background: active ? p.color + "20" : "transparent", color: active ? p.color : "#52525b", transition: "all 0.15s" }}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Topic input */}
-              <div className="p-5 border-b border-white/[0.06]">
-                <div className="flex items-start gap-3">
-                  <svg className="mt-0.5 flex-shrink-0 text-zinc-600" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                  <textarea
-                    className="flex-1 bg-transparent text-white placeholder-zinc-600 resize-none focus:outline-none text-sm leading-relaxed"
-                    rows={2}
-                    placeholder="Ketik topik video kamu… misal: 5 Git commands yang jarang diketahui developer"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }}
-                  />
-                </div>
-                {/* Trending chips */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <div style={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 16, padding: "16px 18px", marginBottom: 12 }}>
+                <textarea
+                  style={{ width: "100%", background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 14, lineHeight: 1.6, resize: "none", fontFamily: "inherit" }}
+                  rows={3}
+                  placeholder="Ketik topik video kamu… misal: 5 Git commands yang jarang diketahui developer"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
                   <button onClick={fetchTrends} disabled={loadingTrends}
-                    className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md border border-white/[0.08] text-zinc-500 hover:text-zinc-300 hover:border-white/20 transition-colors disabled:opacity-40">
-                    {loadingTrends
-                      ? <span className="w-3 h-3 border border-zinc-500 border-t-transparent rounded-full animate-spin" />
-                      : "🔥"}
-                    Trending
-                  </button>
-                  {trendTopics.map((t, i) => (
-                    <button key={i} onClick={() => setTopic(t)}
-                      className="text-xs px-2.5 py-1 rounded-md border border-white/[0.06] text-zinc-500 hover:text-zinc-200 hover:border-white/20 transition-colors text-left truncate max-w-[200px]">
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Knowledge toggle */}
-              <div className="px-5 py-4 border-b border-white/[0.06]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">Ikut Knowledge Creavoo</p>
-                    <p className="text-[11px] text-zinc-600 mt-0.5">{useKnowledge ? "Konten berdasarkan produk & tone Creavoo" : "Konten digital bebas, tidak terikat Creavoo"}</p>
-                  </div>
-                  <Toggle on={useKnowledge} onToggle={() => setUseKnowledge(v => !v)} />
-                </div>
-              </div>
-
-              {/* Voice row */}
-              <div className="px-5 py-4 border-b border-white/[0.06]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-0.5">Voice</p>
-                    <p className="text-sm font-medium text-zinc-300">{selectedVoiceLabel}</p>
-                  </div>
-                  <button onClick={() => setShowVoice(v => !v)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-500 hover:text-zinc-200 transition-colors">
-                    {showVoice ? "Tutup ▲" : "Ganti ▼"}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 10, fontWeight: 700, fontSize: 12, border: "none", cursor: loadingTrends ? "default" : "pointer", background: loadingTrends ? "#ffffff08" : "linear-gradient(135deg,#f97316,#ef4444)", color: "white", boxShadow: loadingTrends ? "none" : "0 3px 14px #f9731650", opacity: loadingTrends ? 0.6 : 1, transition: "all 0.15s" }}>
+                    {loadingTrends ? <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />Mencari…</> : <><span>🔥</span> Trending Topik</>}
                   </button>
                 </div>
-                {showVoice && (
-                  <div className="mt-3 flex gap-2 flex-wrap">
-                    {VOICES.map((v) => (
-                      <button key={v.id} onClick={() => setVoice(v.id)}
-                        className="px-4 py-2.5 rounded-xl border text-left transition-all"
-                        style={{ borderColor: voice === v.id ? "#00AEEF" : "transparent", background: voice === v.id ? "#00AEEF15" : "#ffffff07" }}>
-                        <p className="text-[10px] text-zinc-500">{v.flag} {v.desc}</p>
-                        <p className="text-sm font-bold">{v.label}</p>
+                {trendTopics.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
+                    {trendTopics.map((t, i) => (
+                      <button key={i} onClick={() => setTopic(t)}
+                        style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, padding: "5px 12px", borderRadius: 20, cursor: "pointer", background: topic === t ? "#f9731620" : "#ffffff0a", color: topic === t ? "#fb923c" : "#a1a1aa", border: `1px solid ${topic === t ? "#f9731640" : "#ffffff10"}`, transition: "all 0.15s" }}>
+                        <span style={{ color: "#f97316", fontSize: 9 }}>▸</span>
+                        <span style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t}</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Watermark */}
-              <div className="px-5 py-4 border-b border-white/[0.06]">
-                <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-3">Watermark</p>
-                <div className="flex flex-col gap-4">
-                  {/* Controls row */}
-                  <div className="flex gap-3">
-                  <div className="flex flex-col gap-2 flex-1">
-                    {/* Logo upload */}
-                    <button onClick={() => logoInputRef.current?.click()}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-white/[0.08] hover:border-white/20 transition-colors w-full text-left"
-                      style={{ background: "#ffffff07" }}>
-                      <div className="w-8 h-8 rounded-lg border border-white/[0.08] flex items-center justify-center overflow-hidden flex-shrink-0" style={{ background: "#0a0a0a" }}>
-                        {uploadingLogo ? (
-                          <span className="w-3.5 h-3.5 border border-zinc-500 border-t-transparent rounded-full animate-spin" />
-                        ) : watermarkLogoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={watermarkLogoUrl} alt="logo" className="w-full h-full object-cover" />
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525b" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        )}
-                      </div>
+              {/* Settings row: Knowledge/Theme + Voice */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                {/* Knowledge / Theme */}
+                <div style={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 14, padding: "14px 16px" }}>
+                  {activeProfile === "creavoo" ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
-                        <p className="text-xs font-medium text-zinc-300">{watermarkLogoUrl ? "Logo terupload ✓" : "Upload Logo"}</p>
-                        <p className="text-[10px] text-zinc-600">PNG/JPG · pojok kiri atas</p>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Knowledge</p>
+                        <p style={{ fontSize: 12, color: "#a1a1aa" }}>{useKnowledge ? "Creavoo tone aktif" : "Bebas"}</p>
                       </div>
+                      <Toggle on={useKnowledge} onToggle={() => setUseKnowledge(v => !v)} />
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Tema Konten</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                        {CONTENT_THEMES.map(t => {
+                          const active = contentTheme === t.id;
+                          return (
+                            <button key={t.id} onClick={() => { setContentTheme(t.id); setTrendTopics([]); }}
+                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 10, cursor: "pointer", background: active ? "#6366f115" : "#ffffff07", border: `1px solid ${active ? "#6366f150" : "transparent"}`, transition: "all 0.15s" }}>
+                              <span style={{ fontSize: 14 }}>{t.emoji}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: active ? "#818cf8" : "#71717a" }}>{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Voice */}
+                <div style={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 14, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showVoice ? 10 : 0 }}>
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Voice</p>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "#d4d4d8" }}>{selectedVoiceLabel}</p>
+                    </div>
+                    <button onClick={() => setShowVoice(v => !v)}
+                      style={{ fontSize: 11, padding: "4px 10px", borderRadius: 8, border: "1px solid #ffffff15", color: "#71717a", background: "transparent", cursor: "pointer" }}>
+                      {showVoice ? "Tutup ▲" : "Ganti ▼"}
                     </button>
-                    <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }} />
+                  </div>
+                  {showVoice && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {VOICES.map((v) => (
+                        <button key={v.id} onClick={() => setVoice(v.id)}
+                          style={{ flex: 1, padding: "8px 10px", borderRadius: 10, border: `1px solid ${voice === v.id ? "#00AEEF" : "transparent"}`, background: voice === v.id ? "#00AEEF15" : "#ffffff07", cursor: "pointer", textAlign: "left" as const }}>
+                          <p style={{ fontSize: 10, color: "#71717a" }}>{v.flag} {v.desc}</p>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginTop: 2 }}>{v.label}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                    {/* Handle input */}
-                    <input
-                      type="text"
-                      value={watermarkHandle}
+              {/* Watermark */}
+              <div style={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 14, padding: "14px 16px", marginBottom: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Watermark</p>
+                {loadingWatermark ? (
+                  <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+                    {activeProfile !== "zaportfolio" && <Sk h={40} rounded={10} />}
+                    <Sk h={40} rounded={10} />
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
+                    {activeProfile !== "zaportfolio" && (<>
+                      <button onClick={() => logoInputRef.current?.click()}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, border: "1px solid #ffffff10", background: "#ffffff07", cursor: "pointer", width: "100%", textAlign: "left" as const }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #ffffff10", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                          {uploadingLogo ? <span className="w-3.5 h-3.5 border border-zinc-500 border-t-transparent rounded-full animate-spin" /> : watermarkLogoUrl ? <img src={watermarkLogoUrl} alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#52525b" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "#d4d4d8" }}>{watermarkLogoUrl ? "Logo terupload ✓" : "Upload Logo"}</p>
+                          <p style={{ fontSize: 10, color: "#52525b" }}>PNG/JPG · pojok kiri atas</p>
+                        </div>
+                      </button>
+                      <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }} />
+                    </>)}
+                    <input type="text" value={watermarkHandle}
                       onChange={(e) => { setWatermarkHandle(e.target.value); saveWatermark(e.target.value, watermarkLogoUrl); }}
                       placeholder="@yourhandle"
-                      className="w-full bg-transparent border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-white/20 transition-colors"
-                    />
-                    <p className="text-[10px] text-zinc-700 px-1">Handle muncul di pojok kanan atas video</p>
+                      style={{ width: "100%", background: "transparent", border: "1px solid #ffffff10", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "#fff", outline: "none", fontFamily: "inherit", boxSizing: "border-box" as const }} />
                   </div>
-                  </div>{/* end controls row */}
-
-                  {/* Phone preview — full width, centered */}
-                  <div className="flex justify-center">
-                    <div className="rounded-3xl overflow-hidden border border-black/[0.08] relative"
-                      style={{ width: 220, height: 390, background: "#f8f8fa", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}>
-                      {/* grid lines */}
-                      <div className="absolute inset-0" style={{
-                        backgroundImage: "linear-gradient(to right, #18181b 1px, transparent 1px), linear-gradient(to bottom, #18181b 1px, transparent 1px)",
-                        backgroundSize: "30px 30px", opacity: 0.06,
-                      }} />
-                      {/* accent radial */}
-                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 35%, ${accentColor}45 0%, transparent 60%)` }} />
-                      {/* accent corner */}
-                      <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 80% 85%, ${accentColor}20 0%, transparent 45%)` }} />
-
-                      {/* top bar sim */}
-                      <div className="absolute top-0 inset-x-0 h-7 flex items-center justify-center">
-                        <div className="w-16 h-1 rounded-full bg-black/10" />
-                      </div>
-
-                      {/* top-left: logo */}
-                      <div className="absolute top-8 left-3" style={{ maxWidth: 52 }}>
-                        {watermarkLogoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={watermarkLogoUrl} alt="" style={{ height: 18, width: "auto", maxWidth: 44, objectFit: "contain", borderRadius: 4 }} />
-                        ) : (
-                          <div className="w-4 h-4 rounded bg-zinc-200 flex items-center justify-center">
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* top-right: handle */}
-                      <div className="absolute top-8 right-3">
-                        <p className="text-zinc-700 font-bold" style={{ fontSize: 9 }}>
-                          {watermarkHandle || "@handle"}
-                        </p>
-                      </div>
-
-                      {/* content placeholder */}
-                      <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 items-center">
-                        <div className="text-3xl">🎬</div>
-                        <div className="h-3 bg-black/10 rounded-full w-full" />
-                        <div className="h-2 bg-black/07 rounded-full w-4/5" />
-                        <div className="h-2 bg-black/05 rounded-full w-3/5" />
-                      </div>
-
-                      {/* bottom bar sim */}
-                      <div className="absolute bottom-4 inset-x-0 flex justify-center">
-                        <div className="w-24 h-1 rounded-full bg-black/10" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Auto-upload toggles */}
-              <div className="px-5 py-4 border-b border-white/[0.06] flex flex-col gap-3">
-                <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest">Auto Upload</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">🎵</span>
+              {/* Auto upload */}
+              <div style={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Auto Upload</p>
+                <div style={{ display: "flex", flexDirection: "column" as const, gap: 10 }}>
+                  {activeProfile !== "zaportfolio" && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 16 }}>🎵</span>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e7" }}>TikTok</p>
+                          <p style={{ fontSize: 11, color: "#52525b" }}>Upload otomatis setelah render</p>
+                        </div>
+                      </div>
+                      <Toggle on={autoTikTok} onToggle={() => setAutoTikTok(v => !v)} />
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 16 }}>📸</span>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e7" }}>Instagram Reels</p>
+                        <p style={{ fontSize: 11, color: "#52525b" }}>Upload otomatis setelah render</p>
+                      </div>
+                    </div>
+                    <Toggle on={autoInstagram} onToggle={() => setAutoInstagram(v => !v)} />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 26 }}>
                     <div>
-                      <p className="text-sm font-medium text-zinc-200">TikTok</p>
-                      <p className="text-[11px] text-zinc-600">Upload otomatis setelah render selesai</p>
+                      <p style={{ fontSize: 12, color: "#a1a1aa" }}>Tampil di grid / feed profil</p>
+                      <p style={{ fontSize: 10, color: "#52525b" }}>{igShareToFeed ? "Reels muncul di feed & Reels" : "Hanya di tab Reels"}</p>
                     </div>
+                    <Toggle on={igShareToFeed} onToggle={() => setIgShareToFeed(v => !v)} />
                   </div>
-                  <Toggle on={autoTikTok} onToggle={() => setAutoTikTok(v => !v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">📸</span>
-                    <div>
-                      <p className="text-sm font-medium text-zinc-200">Instagram Reels</p>
-                      <p className="text-[11px] text-zinc-600">Upload otomatis setelah render selesai</p>
-                    </div>
-                  </div>
-                  <Toggle on={autoInstagram} onToggle={() => setAutoInstagram(v => !v)} />
-                </div>
-                <div className="flex items-center justify-between pl-8">
-                  <div>
-                    <p className="text-xs font-medium text-zinc-400">Tampil di grid / feed profil</p>
-                    <p className="text-[11px] text-zinc-600">{igShareToFeed ? "Reels muncul di feed & tab Reels" : "Hanya di tab Reels"}</p>
-                  </div>
-                  <Toggle on={igShareToFeed} onToggle={() => setIgShareToFeed(v => !v)} />
                 </div>
               </div>
 
-              {/* Generate button */}
-              <div className="p-5 flex flex-col gap-2">
-                <button onClick={generate} disabled={!topic.trim()}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    background: topic.trim() ? `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` : "#27272a",
-                    boxShadow: topic.trim() ? `0 4px 20px ${accentColor}50` : "none",
-                  }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                  Generate video sekarang
-                  <span className="text-xs opacity-60 ml-1 font-normal hidden sm:inline">⌘↵</span>
-                </button>
-                <button onClick={() => setShowResetMemory(true)}
-                  className="w-full py-2 rounded-xl text-xs text-zinc-600 hover:text-red-400 transition-colors border border-transparent hover:border-red-900/40">
-                  🗑 Reset memory AI
-                </button>
+              {/* Generate CTA */}
+              <button onClick={generate} disabled={!topic.trim()}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", borderRadius: 14, fontWeight: 800, fontSize: 15, color: "#fff", border: "none", cursor: topic.trim() ? "pointer" : "not-allowed", background: topic.trim() ? `linear-gradient(135deg, ${accentColor}, ${accentColor}bb)` : "#27272a", boxShadow: topic.trim() ? `0 6px 24px ${accentColor}55` : "none", opacity: topic.trim() ? 1 : 0.4, transition: "all 0.2s", marginBottom: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                Generate video sekarang
+                <span style={{ fontSize: 11, opacity: 0.5, fontWeight: 400 }}>⌘↵</span>
+              </button>
+              <button onClick={() => setShowResetMemory(true)}
+                style={{ width: "100%", padding: "8px 0", borderRadius: 12, fontSize: 11, color: "#52525b", background: "transparent", border: "1px solid transparent", cursor: "pointer" }}
+                onMouseEnter={e => { (e.target as HTMLButtonElement).style.color = "#f87171"; (e.target as HTMLButtonElement).style.borderColor = "#7f1d1d50"; }}
+                onMouseLeave={e => { (e.target as HTMLButtonElement).style.color = "#52525b"; (e.target as HTMLButtonElement).style.borderColor = "transparent"; }}>
+                🗑 Reset memory AI
+              </button>
+
+            </div>{/* end left */}
+
+            {/* RIGHT — phone preview */}
+            <div style={{ width: 280, flexShrink: 0, borderLeft: "1px solid #ffffff08", display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: 18, padding: "32px 24px", overflowY: "auto" }}>
+
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: 2, marginBottom: 4 }}>Preview</p>
+                <p style={{ fontSize: 12, color: "#52525b" }}>{activeProfile === "zaportfolio" ? "Zaportfolio" : "Creavoo"}</p>
               </div>
-            </div>
+
+              {/* Phone frame */}
+              <div style={{ position: "relative", width: 200, height: 356, borderRadius: 28, overflow: "hidden", background: activeProfile === "zaportfolio" ? "#ffffff" : "#f0f0f8", boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)" }}>
+                {activeProfile === "zaportfolio" ? (<>
+                  <svg style={{ position: "absolute", top: 0, right: 0 }} width="100" height="100" viewBox="0 0 100 100">
+                    <defs>
+                      <pattern id="pv-diag" x="0" y="0" width="8" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+                        <rect width="4" height="14" fill="#1a3358" opacity="0.18" />
+                      </pattern>
+                      <clipPath id="pv-tri-tr"><polygon points="100,0 0,0 100,100" /></clipPath>
+                    </defs>
+                    <rect width="100" height="100" fill="url(#pv-diag)" clipPath="url(#pv-tri-tr)" />
+                  </svg>
+                  <svg style={{ position: "absolute", bottom: 0, left: 0 }} width="80" height="80" viewBox="0 0 80 80">
+                    {Array.from({ length: 4 }, (_, row) => Array.from({ length: 4 }, (_, col) => (
+                      <circle key={`${row}-${col}`} cx={10 + col * 18} cy={10 + row * 18} r="2" fill="#1a3358" opacity="0.18" />
+                    )))}
+                  </svg>
+                  <svg style={{ position: "absolute", top: 16, left: 10 }} width="24" height="24" viewBox="0 0 24 24">
+                    <polygon points="12,2 22,22 2,22" fill="none" stroke="#1a3358" strokeWidth="1.5" opacity="0.25" />
+                  </svg>
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(to right, #1a3358 1px, transparent 1px), linear-gradient(to bottom, #1a3358 1px, transparent 1px)", backgroundSize: "28px 28px", opacity: 0.04 }} />
+                </>) : (<>
+                  <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 50% 30%, ${accentColor}50 0%, transparent 65%)` }} />
+                  <div style={{ position: "absolute", inset: 0, background: `radial-gradient(circle at 85% 85%, #818cf830 0%, transparent 50%)` }} />
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(to right, ${accentColor}12 1px, transparent 1px), linear-gradient(to bottom, ${accentColor}12 1px, transparent 1px)`, backgroundSize: "28px 28px" }} />
+                </>)}
+                {/* notch */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 52, height: 5, borderRadius: 10, background: activeProfile === "zaportfolio" ? "#1a335815" : "rgba(0,0,0,0.1)" }} />
+                </div>
+                {/* logo creavoo */}
+                {activeProfile !== "zaportfolio" && (
+                  <div style={{ position: "absolute", top: 32, left: 10, maxWidth: 46 }}>
+                    {watermarkLogoUrl ? <img src={watermarkLogoUrl} alt="" style={{ height: 16, width: "auto", maxWidth: 40, objectFit: "contain", borderRadius: 3 }} /> : <div style={{ width: 14, height: 14, borderRadius: 4, background: "#d1d5db", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>}
+                  </div>
+                )}
+                {/* handle */}
+                <div style={{ position: "absolute", top: 32, right: 10 }}>
+                  <p style={{ fontSize: 8, fontWeight: 700, color: activeProfile === "zaportfolio" ? "#1a3358" : "#4b5563" }}>{watermarkHandle || "@handle"}</p>
+                </div>
+                {/* content mock */}
+                <div style={{ position: "absolute", left: 18, right: 18, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column" as const, gap: 10, alignItems: "center" }}>
+                  <div style={{ fontSize: 28 }}>🎬</div>
+                  <div style={{ height: 10, borderRadius: 99, width: "100%", background: activeProfile === "zaportfolio" ? "#1a335818" : "rgba(0,0,0,0.08)" }} />
+                  <div style={{ height: 8, borderRadius: 99, width: "80%", background: activeProfile === "zaportfolio" ? "#1a335810" : "rgba(0,0,0,0.06)" }} />
+                  <div style={{ height: 6, borderRadius: 99, width: "60%", background: activeProfile === "zaportfolio" ? "#1a335808" : "rgba(0,0,0,0.04)" }} />
+                </div>
+                {/* home indicator */}
+                <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
+                  <div style={{ width: 52, height: 4, borderRadius: 99, background: activeProfile === "zaportfolio" ? "#1a335818" : "rgba(0,0,0,0.1)" }} />
+                </div>
+              </div>
+
+              <p style={{ fontSize: 10, color: "#3f3f46", textAlign: "center", lineHeight: 1.5 }}>Watermark preview<br/>Pojok kiri atas (logo) & kanan atas (handle)</p>
+
+            </div>{/* end right */}
+
           </div>
-
         )}
 
         {/* ── Generating ── */}
 
         {step === "generating" && (
-          <div className="flex flex-col items-center justify-center h-full gap-5 text-center px-8">
+          <div className="flex flex-col items-center justify-center gap-5 text-center px-8" style={{ flex: 1, minHeight: 0 }}>
             <div className="w-12 h-12 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${accentColor}40`, borderTopColor: accentColor }} />
             <div>
               <p className="text-white font-bold text-lg">AI sedang menulis script…</p>
@@ -545,6 +621,7 @@ export default function Home() {
 
         {/* ── Rendering ── */}
         {step === "rendering" && (
+          <div className="flex-1 overflow-y-auto min-h-0">
           <div className="max-w-3xl mx-auto px-8 py-10 flex flex-col gap-5">
             {/* Status bar */}
             <div className="flex items-center gap-3 p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/[0.05]">
@@ -629,10 +706,12 @@ export default function Home() {
               )}
             </div>
           </div>
+          </div>
         )}
 
         {/* ── Done ── */}
         {step === "done" && videoUrl && (
+          <div className="flex-1 overflow-y-auto min-h-0">
           <div className="max-w-3xl mx-auto px-8 py-10 flex gap-8 items-start">
             <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-black flex-shrink-0" style={{ width: 240, aspectRatio: "9/16" }}>
               <video src={videoUrl} controls className="w-full h-full object-contain" />
@@ -653,8 +732,8 @@ export default function Home() {
               </a>
               {/* Upload ke platform */}
               <div className="flex gap-3">
-                {/* TikTok */}
-                {activeItem?.tiktokUrl ? (
+                {/* TikTok — creavoo only */}
+                {activeProfile !== "zaportfolio" && (activeItem?.tiktokUrl ? (
                   <a href={activeItem.tiktokUrl !== "uploaded" ? activeItem.tiktokUrl : undefined} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 py-2.5 px-5 rounded-xl font-semibold text-sm border border-green-800/40 text-green-400 transition-colors w-fit"
                     style={{ background: "#111113" }}>
@@ -667,7 +746,7 @@ export default function Home() {
                     {publishing === "tiktok" ? <span className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" /> : "🎵"}
                     Upload TikTok
                   </button>
-                )}
+                ))}
                 {/* Instagram */}
                 {activeItem?.instagramUrl ? (
                   <a href={activeItem.instagramUrl !== "uploaded" ? activeItem.instagramUrl : undefined} target="_blank" rel="noopener noreferrer"
@@ -715,11 +794,12 @@ export default function Home() {
               </button>
             </div>
           </div>
+          </div>
         )}
 
         {/* ── Error ── */}
         {step === "error" && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8 min-h-0">
             <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-xl">❌</div>
             <div>
               <p className="text-red-400 font-medium text-sm">{error}</p>

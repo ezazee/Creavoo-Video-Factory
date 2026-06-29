@@ -11,12 +11,60 @@ export type InstagramPostProps = {
   ctaText: string;
   watermarkHandle?: string;
   watermarkLogo?: string;
+  style?: string;
 };
 
 export type InstagramCarouselSlideProps = InstagramPostProps & {
   slideIndex: number;   // 0 = cover, 1-5 = tips
   totalSlides: number;
 };
+
+// ── Light/portfolio background (zaportfolio style) ────────────────────────────
+function LightBackground() {
+  const navy = "#1a3358";
+  const lineColor = "#b8cce4";
+
+  return (
+    <AbsoluteFill style={{ background: "#ffffff" }}>
+      {/* Top-right diagonal stripe block */}
+      <svg style={{ position: "absolute", top: 0, right: 0 }} width="320" height="320" viewBox="0 0 320 320">
+        <defs>
+          <pattern id="diag-stripes" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+            <rect width="12" height="28" fill={navy} opacity="0.18" />
+          </pattern>
+          <clipPath id="tri-clip-tr">
+            <polygon points="320,0 0,0 320,320" />
+          </clipPath>
+        </defs>
+        <rect width="320" height="320" fill="url(#diag-stripes)" clipPath="url(#tri-clip-tr)" />
+      </svg>
+
+      {/* Bottom-left dot grid */}
+      <svg style={{ position: "absolute", bottom: 0, left: 0 }} width="260" height="260" viewBox="0 0 260 260">
+        {Array.from({ length: 9 }, (_, row) =>
+          Array.from({ length: 9 }, (_, col) => (
+            <circle key={`${row}-${col}`} cx={14 + col * 28} cy={14 + row * 28} r="5.5" fill={navy} opacity="0.28" />
+          ))
+        )}
+      </svg>
+
+      {/* Top-left outline triangle */}
+      <svg style={{ position: "absolute", top: 70, left: 55 }} width="140" height="140" viewBox="0 0 140 140">
+        <polygon points="70,8 132,124 8,124" fill="none" stroke={lineColor} strokeWidth="5" />
+      </svg>
+
+      {/* Bottom-right large outline triangle */}
+      <svg style={{ position: "absolute", bottom: 110, right: 90 }} width="120" height="120" viewBox="0 0 120 120">
+        <polygon points="60,6 114,110 6,110" fill="none" stroke={lineColor} strokeWidth="4.5" />
+      </svg>
+
+      {/* Bottom-right small triangle */}
+      <svg style={{ position: "absolute", bottom: 52, right: 52 }} width="76" height="76" viewBox="0 0 76 76">
+        <polygon points="38,4 72,68 4,68" fill="none" stroke={lineColor} strokeWidth="3.5" />
+      </svg>
+    </AbsoluteFill>
+  );
+}
 
 // ── Shared watermark: logo top-left, handle bottom-right ──────────────────────
 function ImageWatermark({ handle, logo }: { handle?: string; logo?: string }) {
@@ -68,12 +116,13 @@ function SlideCounter({ current, total, accent }: { current: number; total: numb
 // ── Single post — semua tips dalam satu frame ─────────────────────────────────
 export const InstagramPostComposition: React.FC<InstagramPostProps> = ({
   videoTitle, subtitle, introEmoji, accent, tips, ctaText,
-  watermarkHandle = "", watermarkLogo,
+  watermarkHandle = "", watermarkLogo, style,
 }) => {
   const ac = accent || "#6366f1";
+  const isLight = style === "zaportfolio";
   return (
     <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
-      <Background accent={ac} />
+      {isLight ? <LightBackground /> : <Background accent={ac} />}
       <AbsoluteFill style={{ padding: "60px 68px", display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 22, marginBottom: 28 }}>
@@ -132,16 +181,18 @@ export const InstagramPostComposition: React.FC<InstagramPostProps> = ({
 // ── Carousel — satu slide per render ─────────────────────────────────────────
 export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideProps> = ({
   videoTitle, subtitle, introEmoji, accent, tips, ctaText,
-  watermarkHandle = "", watermarkLogo,
+  watermarkHandle = "", watermarkLogo, style,
   slideIndex, totalSlides,
 }) => {
   const ac = accent || "#6366f1";
+  const isLight = style === "zaportfolio";
+  const BG = isLight ? <LightBackground /> : <Background accent={ac} />;
 
   // Slide 0 = cover
   if (slideIndex === 0) {
     return (
       <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
-        <Background accent={ac} />
+        {BG}
         <AbsoluteFill style={{
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -182,7 +233,7 @@ export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideP
   if (slideIndex === totalSlides - 1) {
     return (
       <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
-        <Background accent={ac} />
+        {BG}
         <AbsoluteFill style={{
           display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
@@ -223,7 +274,7 @@ export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideP
 
   return (
     <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
-      <Background accent={ac} />
+      {BG}
       <AbsoluteFill style={{
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",

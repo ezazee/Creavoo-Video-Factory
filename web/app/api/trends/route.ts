@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
@@ -7,6 +7,8 @@ const client = new OpenAI({
   baseURL: process.env.AI_BASE_URL,
   apiKey: process.env.AI_API_KEY,
 });
+
+const TAVILY_KEY = process.env.TAVILY_API_KEY ?? "";
 
 function loadCreavooKnowledge(): string {
   try {
@@ -18,33 +20,70 @@ function loadCreavooKnowledge(): string {
   }
 }
 
-async function fetchGoogleTrends(): Promise<string[]> {
+const THEME_QUERIES: Record<string, string> = {
+  "it-developer": "trending programming web development tech stack 2026",
+  "ai":           "trending AI tools artificial intelligence use cases 2026",
+  "design":       "trending UI UX design tools figma 2026",
+  "tips-trick":   "trending IT productivity tips developer tricks 2026",
+};
+
+const THEME_LABELS: Record<string, string> = {
+  "it-developer": "IT Developer (web dev, coding, tech stack)",
+  "ai":           "AI (tools AI, tips AI, use case AI)",
+  "design":       "Design (UI UX, vector, design tools)",
+  "tips-trick":   "Tips & Trick (IT, design, AI productivity)",
+};
+
+async function tavilySearch(query: string): Promise<string[]> {
   try {
-    const res = await fetch(
-      "https://trends.google.com/trending/rss?geo=ID",
-      { next: { revalidate: 1800 } }
-    );
-    const xml = await res.text();
-    const titles = [...xml.matchAll(/<title><!\[CDATA\[(.+?)\]\]><\/title>/g)]
-      .map((m) => m[1])
-      .filter((t) => !t.includes("Google Trends"))
-      .slice(0, 20);
-    return titles;
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: TAVILY_KEY,
+        query,
+        search_depth: "basic",
+        max_results: 8,
+        include_answer: false,
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const results: { title: string; content?: string }[] = data.results ?? [];
+    return results
+      .slice(0, 8)
+      .map((r) => r.title + (r.content ? ` — ${r.content.slice(0, 80)}` : ""))
+      .filter(Boolean);
   } catch {
     return [];
   }
 }
 
-export async function GET() {
-  // Step 1: baca knowledge Creavoo dulu
-  const knowledge = loadCreavooKnowledge();
+export async function GET(req: NextRequest) {
+  const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
+  const contentTheme = req.nextUrl.searchParams.get("contentTheme") ?? "it-developer";
+  const isZaportfolio = profile === "zaportfolio";
 
-  // Step 2: scrape Google Trends Indonesia
-  const trends = await fetchGoogleTrends();
+  const [searchResults, knowledge] = await Promise.all([
+    isZaportfolio
+      ? tavilySearch(THEME_QUERIES[contentTheme] ?? THEME_QUERIES["it-developer"])
+      : Promise.all([
+          tavilySearch("trending social media content creator tips Indonesia 2026"),
+          tavilySearch("viral konten TikTok Instagram creator growth 2026"),
+        ]).then(([r1, r2]) => [...r1, ...r2]),
+    isZaportfolio ? Promise.resolve("") : Promise.resolve(loadCreavooKnowledge()),
+  ]);
 
-  // Step 3: AI suggest topik yang relevan dengan domain Creavoo + trend Google
   const knowledgeContext = knowledge
-    ? `\n\n## KNOWLEDGE PRODUK CREAVOO (baca dulu sebelum suggest topik):\n${knowledge}\n\n---\n`
+    ? `\n\n## KNOWLEDGE PRODUK CREAVOO:\n${knowledge}\n\n---\n`
+    : "";
+
+  const themeLabel = isZaportfolio
+    ? `Tema konten: **${THEME_LABELS[contentTheme] ?? contentTheme}**`
+    : "Platform: Creavoo — social media growth & content creation untuk creator Indonesia";
+
+  const searchContext = searchResults.length > 0
+    ? `\nHasil pencarian terbaru dari internet (2026):\n${searchResults.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
     : "";
 
   const completion = await client.chat.completions.create({
@@ -52,20 +91,20 @@ export async function GET() {
     messages: [
       {
         role: "system",
-        content: `Kamu adalah content strategist untuk Creavoo — platform AI social media growth untuk creator Indonesia.${knowledgeContext}
-Tugasmu: suggest 6 ide topik konten video pendek (TikTok/Reels/YouTube Shorts) yang:
-1. Relevan dengan domain Creavoo: social media growth, content creation, AI tools, creator economy, TikTok/Instagram/YouTube
-2. Bisa connect dengan trending di Indonesia saat ini
-3. Menggunakan pain points dan use cases yang ada di knowledge Creavoo
-4. Format cocok untuk "5 tips / explained / hidden gems / mistakes / beginner-vs-pro / tutorial"
+        content: `Kamu adalah content strategist untuk video pendek (Reels/Shorts).${knowledgeContext}
+${themeLabel}
 
-Format output: JSON array of strings, masing-masing topik maksimal 60 karakter. Hanya JSON, tanpa markdown.`,
+Tugasmu: suggest 6 ide topik konten video pendek yang:
+1. Relevan dengan tema di atas
+2. Berdasarkan tren aktual 2026 dari hasil pencarian internet
+3. Format cocok untuk "5 tips / explained / hidden gems / mistakes / tutorial / beginner vs pro"
+4. Audiens: developer/kreator Indonesia
+
+Format output: JSON array of strings, masing-masing topik maksimal 65 karakter. Hanya JSON, tanpa markdown.`,
       },
       {
         role: "user",
-        content: trends.length > 0
-          ? `Trending di Indonesia saat ini: ${trends.slice(0, 10).join(", ")}\n\nBuat 6 ide topik video yang relevan dengan Creavoo dan bisa connect dengan trend atau momen ini.`
-          : `Buat 6 ide topik video yang relevan dengan domain Creavoo (social media growth, content creation, AI tools) untuk audiens creator Indonesia.`,
+        content: `${searchContext}\n\nBuat 6 ide topik video pendek yang relevan dan trending di 2026.`,
       },
     ],
     temperature: 0.9,
@@ -85,10 +124,16 @@ Format output: JSON array of strings, masing-masing topik maksimal 60 karakter. 
     if (matches) topics = matches.map((s) => s.slice(1, -1)).slice(0, 6);
   }
 
-  // Fallback topics sesuai domain Creavoo
   if (topics.length === 0) {
-    topics = [
-      "5 alasan akun TikTok kamu stuck di sini terus",
+    topics = isZaportfolio ? [
+      "5 AI tools gratis yang wajib dicoba developer 2026",
+      "Cara belajar coding lebih cepat dengan AI",
+      "Tech stack terbaik untuk web developer 2026",
+      "5 tips UI design yang bikin app kamu kelihatan pro",
+      "Kesalahan desainer pemula saat bikin landing page",
+      "Prompt engineering tricks untuk developer",
+    ] : [
+      "5 alasan akun TikTok kamu stuck dan cara fixnya",
       "Cara audit akun Instagram sendiri dalam 5 menit",
       "Kesalahan creator pemula yang bikin konten ga viral",
       "Tips posting di waktu yang tepat agar reach meledak",
@@ -97,5 +142,5 @@ Format output: JSON array of strings, masing-masing topik maksimal 60 karakter. 
     ];
   }
 
-  return NextResponse.json({ topics: topics.slice(0, 6), trends: trends.slice(0, 5) });
+  return NextResponse.json({ topics: topics.slice(0, 6), searchResults: searchResults.slice(0, 5) });
 }

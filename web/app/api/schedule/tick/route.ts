@@ -9,6 +9,7 @@ const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 const GITHUB_REPO = process.env.GITHUB_REPO ?? "";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? "";
 
+
 // Panggil internal API routes dari dalam server-side
 async function callInternal(path: string, method = "GET", body?: unknown) {
   const base = process.env.NEXT_PUBLIC_APP_URL
@@ -33,8 +34,8 @@ async function checkGithubRun(runId: number): Promise<{ status: string; conclusi
 }
 
 // Cek rendering jobs yang sudah selesai → auto-post
-async function processPendingJobs() {
-  const jobs = await loadRecentJobs(20);
+async function processPendingJobs(profile = "creavoo") {
+  const jobs = await loadRecentJobs(20, profile);
   const rendering = jobs.filter(j => j.status === "rendering");
   const log: string[] = [];
 
@@ -84,11 +85,12 @@ async function processPendingJobs() {
         ? job.caption + (job.hashtags?.length ? "\n\n" + job.hashtags.map(h => `#${h}`).join(" ") : "")
         : "";
 
-      if (job.mediaType !== "carousel" && job.autoTikTok && !job.tiktokUrl) {
+      const jobProfile = job.profile ?? "creavoo";
+      if (job.mediaType !== "carousel" && job.autoTikTok && !job.tiktokUrl && jobProfile !== "zaportfolio") {
         try {
           const r = await callInternal("/api/publish", "POST", {
             platform: "tiktok", videoUrl: updated.videoUrl, caption: captionFull,
-            thumbnailUrl: updated.thumbnailUrl, igShareToFeed: job.igShareToFeed,
+            thumbnailUrl: updated.thumbnailUrl, igShareToFeed: job.igShareToFeed, profile: jobProfile,
           });
           updated = { ...updated, tiktokUrl: r.postUrl ?? "posted", status: "posted" };
           log.push(`job ${job.runId} → posted TikTok`);
@@ -98,8 +100,8 @@ async function processPendingJobs() {
       if (job.autoInstagram && !job.instagramUrl) {
         try {
           const publishBody = job.mediaType === "carousel"
-            ? { platform: "instagram", imageUrls: updated.imageUrls, caption: captionFull, mediaType: "carousel" }
-            : { platform: "instagram", videoUrl: updated.videoUrl, caption: captionFull, thumbnailUrl: updated.thumbnailUrl, igShareToFeed: job.igShareToFeed };
+            ? { platform: "instagram", imageUrls: updated.imageUrls, caption: captionFull, mediaType: "carousel", profile: jobProfile }
+            : { platform: "instagram", videoUrl: updated.videoUrl, caption: captionFull, thumbnailUrl: updated.thumbnailUrl, igShareToFeed: job.igShareToFeed, profile: jobProfile };
           const r = await callInternal("/api/publish", "POST", publishBody);
           updated = { ...updated, instagramUrl: r.postUrl ?? "posted", status: "posted" };
           log.push(`job ${job.runId} → posted Instagram (${job.mediaType})`);
@@ -125,14 +127,15 @@ export async function GET(req: NextRequest) {
 
   const force = req.nextUrl.searchParams.get("force") === "true";
   const dryrun = req.nextUrl.searchParams.get("dryrun") === "true";
+  const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
   const log: string[] = [];
 
   // Step 1: proses rendering jobs yang sudah selesai
-  const pendingLog = await processPendingJobs();
+  const pendingLog = await processPendingJobs(profile);
   log.push(...pendingLog);
 
   // Step 2: cek apakah sekarang waktunya generate video baru
-  const settings = await loadSettings();
+  const settings = await loadSettings(profile);
 
   // Waktu WIB = UTC+7 (dipakai baik di time-check maupun force mode)
   const nowTs = new Date();
@@ -169,8 +172,51 @@ export async function GET(req: NextRequest) {
     "Cara rekam video dengan HP tanpa kamera mahal", "Tips lighting konten di rumah modal nol", "Aplikasi edit video terbaik di HP gratis",
   ];
 
+  const ZAPORTFOLIO_TOPICS: Record<string, string[]> = {
+    "it-developer": [
+      "Tech Stack Terpopuler untuk Web Developer 2026", "Perbedaan Frontend vs Backend vs Fullstack Developer",
+      "Framework JavaScript yang Wajib Dipelajari Tahun Ini", "Kenapa TypeScript Lebih Baik dari JavaScript Biasa",
+      "Cara Kerja REST API yang Wajib Dipahami Developer", "Docker untuk Developer: Kenapa Harus Pakai Container",
+      "Git Workflow yang Dipakai Tim Developer Profesional", "Perbedaan SQL vs NoSQL: Kapan Pakai yang Mana",
+      "Roadmap Belajar Web Developer dari Nol", "Tools VS Code yang Wajib Di-install Developer",
+      "Kenapa Next.js Jadi Pilihan Utama Web Developer", "Deploy Aplikasi ke Cloud: Pilihan Terbaik 2026",
+      "Clean Code: Prinsip yang Bikin Kode Kamu Mudah Dibaca", "Testing di Software: Unit Test vs Integration Test",
+      "Microservices vs Monolith: Pilih yang Mana",
+    ],
+    "ai": [
+      "5 Tools AI Gratis yang Wajib Dicoba di 2026", "Cara Pakai AI untuk Produktivitas Kerja Sehari-hari",
+      "Perbedaan ChatGPT vs Claude vs Gemini: Mana yang Terbaik", "AI untuk Developer: Tools yang Bikin Coding Lebih Cepat",
+      "Prompt Engineering: Cara Dapetin Hasil Terbaik dari AI", "AI yang Bisa Generate Gambar: Perbandingan Terbaik",
+      "Cara Bikin Aplikasi Pakai AI tanpa Coding", "Machine Learning vs Deep Learning: Apa Bedanya",
+      "AI Agent: Teknologi yang Akan Ubah Cara Kerja Kita", "Kenapa Semua Developer Perlu Paham Dasar-dasar AI",
+      "Tools AI untuk Content Creator yang Wajib Dicoba", "RAG: Cara AI Bisa Jawab Pertanyaan dari Data Kamu",
+      "Model AI Lokal vs Cloud: Mana yang Lebih Baik", "AI untuk Belajar Coding: Lebih Efektif dari Tutorial Biasa",
+      "Etika Penggunaan AI yang Perlu Kamu Tahu",
+    ],
+    "design": [
+      "Prinsip UI/UX yang Bikin Aplikasi Enak Dipakai", "Tren Design UI 2026 yang Perlu Kamu Tahu",
+      "Perbedaan UI Designer vs UX Designer vs Product Designer", "Color Theory untuk Designer: Dasar yang Sering Diabaikan",
+      "Typography Rules yang Bikin Design Terlihat Profesional", "Cara Bikin Design System yang Scalable",
+      "Figma Tips yang Bikin Workflow Design Lebih Cepat", "Design Vector: Kapan Pakai Illustrator vs Figma",
+      "Retro Design Trend: Kenapa Estetika Lama Kembali Populer", "Grid System dalam Design: Kenapa Penting",
+      "Micro-interaction: Detail Kecil yang Bikin App Terasa Premium", "Dark Mode Design: Best Practices yang Wajib Diikuti",
+      "Accessibility in Design: Bikin Produk yang Bisa Dipakai Semua Orang", "Responsive Design: Cara Bikin Layout yang Muat di Semua Device",
+      "Design Handoff ke Developer: Cara yang Benar Pakai Figma",
+    ],
+    "tips-trick": [
+      "Shortcut VS Code yang Jarang Diketahui tapi Super Useful", "5 Chrome Extension Wajib untuk Developer dan Designer",
+      "Cara Bikin README GitHub yang Keren dan Informatif", "Terminal Tips yang Bikin Workflow Developer Lebih Cepat",
+      "Regex: Cara Pakai Regular Expression untuk Pemula", "Cara Debug Kode yang Efektif dan Cepat",
+      "API Testing dengan Postman: Tips yang Bikin Kerja Lebih Mudah", "Cara Manage Waktu sebagai Developer Freelance",
+      "Google Search Tips untuk Developer dan Designer", "Cara Bikin Portfolio yang Menarik Perhatian Recruiter",
+      "Keyboard Shortcut Figma yang Wajib Dihafalkan Designer", "Cara Pakai AI Copilot untuk Menulis Kode Lebih Cepat",
+      "Cara Setup Environment Developer yang Rapi dan Efisien", "Tips Belajar Programming yang Efektif untuk Pemula",
+      "Cara Contribute ke Open Source untuk Pemula",
+    ],
+  };
+
   // Ambil judul yang sudah dipakai dalam 14 hari terakhir untuk dedup
-  const recentJobs = await loadRecentJobs(30);
+  const recentJobs = await loadRecentJobs(30, profile);
   const recentTitles = new Set(
     recentJobs
       .filter(j => Date.now() - new Date(j.createdAt).getTime() < 14 * 24 * 3600 * 1000)
@@ -178,14 +224,19 @@ export async function GET(req: NextRequest) {
       .filter(Boolean)
   );
 
+  const isZaportfolio = profile === "zaportfolio";
+  const contentTheme = settings.contentTheme ?? "it-developer";
+  const useKnowledgeEffective = isZaportfolio ? false : dayConfig.useKnowledge;
+
   const pickTopic = (trendTopics: string[]) => {
     let pool: string[];
-    if (dayConfig.useKnowledge) {
+    if (isZaportfolio) {
+      pool = ZAPORTFOLIO_TOPICS[contentTheme] ?? ZAPORTFOLIO_TOPICS["it-developer"];
+    } else if (dayConfig.useKnowledge) {
       pool = trendTopics.slice(0, 6).length > 0 ? trendTopics.slice(0, 6) : ["Tips viral sosmed 2026"];
     } else {
       pool = trendTopics.length > 0 ? [...trendTopics.slice(0, 3), ...KNOWLEDGE_OFF_TOPICS] : KNOWLEDGE_OFF_TOPICS;
     }
-    // Hindari topik yang judulnya mirip dengan yang sudah pernah dipakai
     const filtered = pool.filter(t => !recentTitles.has(t.toLowerCase().trim()));
     return (filtered.length > 0 ? filtered : pool)[Math.floor(Math.random() * Math.min((filtered.length || pool.length), 10))];
   };
@@ -196,16 +247,16 @@ export async function GET(req: NextRequest) {
   const needCarousel = isCarouselTime || (force && (dayConfig.carouselTimes ?? []).length > 0);
 
   // Generate script untuk video dan carousel secara paralel agar tidak timeout
-  const trendsData = await callInternal("/api/trends").catch(() => ({ topics: [] }));
+  const trendsData = isZaportfolio ? { topics: [] } : await callInternal("/api/trends").catch(() => ({ topics: [] }));
 
   const [videoScript, carouselScript] = await Promise.all([
     needVideo
-      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: dayConfig.useKnowledge })
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective })
           .then((s: Record<string, unknown>) => { log.push(`[VIDEO] ✓ script: "${s.videoTitle}"`); return s; })
           .catch((e: unknown) => { log.push(`[VIDEO] generate error: ${e}`); return null; })
       : Promise.resolve(null),
     needCarousel
-      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: dayConfig.useKnowledge })
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective })
           .then((s: Record<string, unknown>) => { log.push(`[CAROUSEL] ✓ script: "${s.videoTitle}"`); return s; })
           .catch((e: unknown) => { log.push(`[CAROUSEL] generate error: ${e}`); return null; })
       : Promise.resolve(null),
@@ -226,6 +277,7 @@ export async function GET(req: NextRequest) {
           runId, createdAt: new Date().toISOString(), status: "rendering", mediaType: "video",
           videoTitle: videoScript.videoTitle as string, caption: videoScript.caption as string, hashtags: videoScript.hashtags as string[],
           autoTikTok: settings.autoTikTok, autoInstagram: settings.autoInstagram, igShareToFeed: dayConfig.igShareToFeed,
+          profile,
         });
         results.push({ type: "video", runId, videoTitle: videoScript.videoTitle as string });
       } catch (e) { log.push(`[VIDEO] render error: ${e}`); }
@@ -240,7 +292,7 @@ export async function GET(req: NextRequest) {
       try {
         const totalSlides = ((carouselScript.tips as unknown[])?.length ?? 5) + 2;
         const renderRes = await callInternal("/api/render-image", "POST", {
-          ...carouselScript, type: "carousel", totalSlides, watermarkHandle: "", watermarkLogoUrl: null,
+          ...carouselScript, type: "carousel", totalSlides, watermarkHandle: "", watermarkLogoUrl: null, style: profile,
         });
         const runId: number = renderRes.runId;
         log.push(`[CAROUSEL] render triggered runId=${runId}`);
@@ -248,6 +300,7 @@ export async function GET(req: NextRequest) {
           runId, createdAt: new Date().toISOString(), status: "rendering", mediaType: "carousel",
           videoTitle: carouselScript.videoTitle as string, caption: carouselScript.caption as string, hashtags: carouselScript.hashtags as string[],
           autoTikTok: false, autoInstagram: settings.autoInstagram, igShareToFeed: true,
+          profile,
         });
         results.push({ type: "carousel", runId, videoTitle: carouselScript.videoTitle as string });
       } catch (e) { log.push(`[CAROUSEL] render error: ${e}`); }

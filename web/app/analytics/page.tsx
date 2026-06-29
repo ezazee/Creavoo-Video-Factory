@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { Sk, SkeletonStyle } from "../components/Skeleton";
 import {
   LineChart,
   Line,
@@ -92,26 +93,37 @@ function sum(a?: number, b?: number): number | undefined {
   return (a ?? 0) + (b ?? 0);
 }
 
+const PROFILES = [
+  { id: "creavoo", label: "Creavoo", color: "#00AEEF" },
+  { id: "zaportfolio", label: "Zaportfolio", color: "#6366f1" },
+];
+
 export default function AnalyticsPage() {
+  const [activeProfile, setActiveProfile] = useState("creavoo");
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const stored = localStorage.getItem("vf_profile");
+    if (stored === "zaportfolio") setActiveProfile("zaportfolio");
+  }, []);
+
+  useEffect(() => {
     const load = () => {
       setLoading(true);
       setError(null);
-      fetch(`/api/analytics?days=${days}`)
+      fetch(`/api/analytics?days=${days}&profile=${activeProfile}`)
         .then((r) => r.json())
         .then((d) => { setData(d); setLoading(false); })
         .catch((e) => { setError(String(e)); setLoading(false); });
     };
 
     load();
-    const interval = setInterval(load, 60 * 60 * 1000); // refresh tiap 1 jam (ikut Zernio)
+    const interval = setInterval(load, 60 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [days]);
+  }, [days, activeProfile]);
 
   const tt = data?.tiktok;
   const ig = data?.instagram;
@@ -133,6 +145,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden text-white">
+      <SkeletonStyle />
       <Sidebar />
 
       {/* Main */}
@@ -142,6 +155,22 @@ export default function AnalyticsPage() {
           <div>
             <h2 className="text-xl font-black text-white">Analytics</h2>
             <p className="text-xs text-zinc-500 mt-0.5">Performa konten via Zernio</p>
+            <div className="flex gap-1.5 mt-3 p-1 rounded-xl w-fit" style={{ background: "#111113", border: "1px solid #ffffff0a" }}>
+              {PROFILES.map(p => {
+                const active = activeProfile === p.id;
+                return (
+                  <button key={p.id} onClick={() => { setActiveProfile(p.id); localStorage.setItem("vf_profile", p.id); }}
+                    className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                    style={{
+                      background: active ? p.color + "20" : "transparent",
+                      color: active ? p.color : "#52525b",
+                      border: active ? `1px solid ${p.color}40` : "1px solid transparent",
+                    }}>
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex gap-1 border border-white/[0.06] rounded-lg p-1" style={{ background: "#111113" }}>
             {DAYS_OPTIONS.map((d) => (
@@ -161,9 +190,37 @@ export default function AnalyticsPage() {
         </div>
 
         {loading && (
-          <div className="flex items-center justify-center h-64 text-zinc-500">
-            <div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mr-3" />
-            Loading data...
+          <div className="flex flex-col gap-4">
+            {/* Stat card skeletons */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "#111113", border: "1px solid #ffffff06" }}>
+                  <Sk h={10} w="60%" rounded={5} />
+                  <Sk h={22} w="75%" rounded={6} />
+                </div>
+              ))}
+            </div>
+            {/* Chart skeleton */}
+            <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "#111113", border: "1px solid #ffffff06" }}>
+              <Sk h={12} w="25%" rounded={5} />
+              <Sk h={180} rounded={10} />
+            </div>
+            {/* Platform skeletons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[0, 1].map(i => (
+                <div key={i} className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "#111113", border: "1px solid #ffffff06" }}>
+                  <Sk h={14} w="40%" rounded={6} />
+                  <div className="grid grid-cols-2 gap-2">
+                    {Array.from({ length: 4 }, (_, j) => (
+                      <div key={j} className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "#0a0a0a" }}>
+                        <Sk h={10} w="60%" rounded={4} />
+                        <Sk h={18} w="50%" rounded={5} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

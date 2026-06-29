@@ -2,12 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
-export default function Sidebar({ history = [], onSelectHistory }: {
-  history?: { id: string; title: string; status: "done" | "rendering" | "failed"; accent: string; createdAt: string }[];
+type HistoryItem = { id: string; title: string; status: "done" | "rendering" | "failed"; accent: string; createdAt: string };
+
+export default function Sidebar({ history: historyProp, onSelectHistory }: {
+  history?: HistoryItem[];
   onSelectHistory?: (id: string) => void;
 }) {
   const path = usePathname();
+  const [localHistory, setLocalHistory] = useState<HistoryItem[]>([]);
+
+  useEffect(() => {
+    const stored: HistoryItem[] = JSON.parse(localStorage.getItem("vf_history") ?? "[]");
+    setLocalHistory(stored);
+  }, [path]);
+
+  const history = historyProp ?? localHistory;
 
   function timeAgo(iso: string) {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -68,46 +79,41 @@ export default function Sidebar({ history = [], onSelectHistory }: {
         </Link>
       </div>
 
-      {/* History — hanya tampil di halaman generate */}
-      {path === "/" && (
-        <div className="flex-1 overflow-y-auto px-3 pb-4">
-          {history.length === 0 ? (
-            <p className="text-xs text-zinc-700 text-center mt-8 px-2">Belum ada video. Buat yang pertama!</p>
-          ) : (
-            <>
-              <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest px-2 mb-2">Recents</p>
-              <div className="flex flex-col gap-0.5">
-                {history.map((item) => (
-                  onSelectHistory ? (
-                    <button key={item.id} onClick={() => onSelectHistory(item.id)}
-                      className="w-full text-left rounded-lg px-2.5 py-2 text-xs transition-all flex items-start gap-2 hover:bg-white/[0.04]"
-                      style={{ borderLeft: `2px solid ${item.accent}40` }}>
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${item.status === "done" ? "bg-green-400" : item.status === "rendering" ? "bg-yellow-400 animate-pulse" : "bg-red-500"}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-zinc-300 font-medium leading-tight">{item.title}</p>
-                        <p className="text-zinc-600 text-[10px] mt-0.5">{timeAgo(item.createdAt)}</p>
-                      </div>
-                    </button>
-                  ) : (
-                    <Link key={item.id} href="/"
-                      className="w-full text-left rounded-lg px-2.5 py-2 text-xs transition-all flex items-start gap-2"
-                      style={{ borderLeft: `2px solid ${item.accent}40` }}>
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${item.status === "done" ? "bg-green-400" : item.status === "rendering" ? "bg-yellow-400 animate-pulse" : "bg-red-500"}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-zinc-300 font-medium leading-tight">{item.title}</p>
-                        <p className="text-zinc-600 text-[10px] mt-0.5">{timeAgo(item.createdAt)}</p>
-                      </div>
-                    </Link>
-                  )
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Spacer for non-generate pages */}
-      {path !== "/" && <div className="flex-1" />}
+      {/* History — tampil di semua halaman */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4">
+        {history.length === 0 ? (
+          <p className="text-xs text-zinc-700 text-center mt-8 px-2">Belum ada video. Buat yang pertama!</p>
+        ) : (
+          <>
+            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest px-2 mb-2">Recents</p>
+            <div className="flex flex-col gap-0.5">
+              {history.map((item) => (
+                onSelectHistory && path === "/" ? (
+                  <button key={item.id} onClick={() => onSelectHistory(item.id)}
+                    className="w-full text-left rounded-lg px-2.5 py-2 text-xs transition-all flex items-start gap-2 hover:bg-white/[0.04]"
+                    style={{ borderLeft: `2px solid ${item.accent}40` }}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${item.status === "done" ? "bg-green-400" : item.status === "rendering" ? "bg-yellow-400 animate-pulse" : "bg-red-500"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-zinc-300 font-medium leading-tight">{item.title}</p>
+                      <p className="text-zinc-600 text-[10px] mt-0.5">{timeAgo(item.createdAt)}</p>
+                    </div>
+                  </button>
+                ) : (
+                  <Link key={item.id} href="/"
+                    className="w-full text-left rounded-lg px-2.5 py-2 text-xs transition-all flex items-start gap-2 hover:bg-white/[0.04]"
+                    style={{ borderLeft: `2px solid ${item.accent}40` }}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${item.status === "done" ? "bg-green-400" : item.status === "rendering" ? "bg-yellow-400 animate-pulse" : "bg-red-500"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-zinc-300 font-medium leading-tight">{item.title}</p>
+                      <p className="text-zinc-600 text-[10px] mt-0.5">{timeAgo(item.createdAt)}</p>
+                    </div>
+                  </Link>
+                )
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </aside>
   );
 }

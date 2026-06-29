@@ -7,6 +7,7 @@ export async function POST(req: NextRequest) {
     watermarkHandle, watermarkLogoUrl,
     type = "single",  // "single" | "carousel"
     totalSlides = 7,
+    style = "creavoo",
   } = body;
 
   const [owner, repo] = (process.env.GITHUB_REPO ?? "").split("/");
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
           }),
           type,
           total_slides: String(totalSlides),
+          style,
         },
       }),
     },

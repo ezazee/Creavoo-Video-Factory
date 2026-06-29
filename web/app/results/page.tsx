@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { Sk, SkeletonStyle } from "../components/Skeleton";
 
 type MediaType = "video" | "image" | "carousel";
 
@@ -16,15 +17,17 @@ type HistoryItem = {
   // image / carousel
   imageUrl?: string;
   imageUrls?: string[];
+  profile?: string;
 };
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return "baru saja";
+  if (m < 60) return `${m}m lalu`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return `${h}j lalu`;
+  return `${Math.floor(h / 24)}h lalu`;
 }
 
 function mediaIcon(item: HistoryItem) {
@@ -33,7 +36,14 @@ function mediaIcon(item: HistoryItem) {
   return "🎥";
 }
 
+const PROFILES = [
+  { id: "all", label: "All", color: "#a1a1aa" },
+  { id: "creavoo", label: "Creavoo", color: "#00AEEF" },
+  { id: "zaportfolio", label: "Zaportfolio", color: "#6366f1" },
+];
+
 export default function ResultsPage() {
+  const [activeProfile, setActiveProfile] = useState("creavoo");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [selected, setSelected] = useState<HistoryItem | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -42,6 +52,19 @@ export default function ResultsPage() {
   const [copied, setCopied] = useState(false);
   const [publishErr, setPublishErr] = useState<string | null>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const pollIntervalsRef = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
+
+  useEffect(() => {
+    return () => {
+      pollIntervalsRef.current.forEach(id => clearInterval(id));
+      pollIntervalsRef.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("vf_profile");
+    if (stored === "zaportfolio") setActiveProfile("zaportfolio");
+  }, []);
 
   const pollRun = (runId: number, itemId: string) => {
     const interval = setInterval(async () => {
@@ -50,13 +73,14 @@ export default function ResultsPage() {
         const d = await r.json();
         if (d.status === "completed") {
           clearInterval(interval);
+          pollIntervalsRef.current.delete(interval);
           const blobRes = await fetch("/api/blob").then(r2 => r2.json());
           const videos: { url: string; pathname: string; uploadedAt: string }[] = blobRes.videos ?? [];
-          const latest = videos[0];
+          const matched = videos.find(v => v.pathname.includes(String(runId))) ?? videos[0];
           let doneItem: HistoryItem | undefined;
           setHistory(prev => {
             const updated = prev.map(h => h.id === itemId
-              ? { ...h, status: "done" as const, videoUrl: latest?.url }
+              ? { ...h, status: "done" as const, videoUrl: matched?.url }
               : h);
             doneItem = updated.find(h => h.id === itemId);
             localStorage.setItem("vf_history", JSON.stringify(updated));
@@ -68,6 +92,7 @@ export default function ResultsPage() {
           }
         } else if (d.status === "failed" || d.status === "cancelled") {
           clearInterval(interval);
+          pollIntervalsRef.current.delete(interval);
           setHistory(prev => {
             const updated = prev.map(h => h.id === itemId ? { ...h, status: "failed" as const } : h);
             localStorage.setItem("vf_history", JSON.stringify(updated));
@@ -76,10 +101,18 @@ export default function ResultsPage() {
         }
       } catch { /* ignore */ }
     }, 8000);
+    pollIntervalsRef.current.add(interval);
     return interval;
   };
 
   useEffect(() => {
+    if (activeProfile === "all") {
+      // Show combined data from localStorage
+      const local: HistoryItem[] = JSON.parse(localStorage.getItem("vf_history") ?? "[]");
+      setHistory(local);
+      setLoadingBlob(false);
+      return;
+    }
     const local: HistoryItem[] = JSON.parse(localStorage.getItem("vf_history") ?? "[]");
 
     fetch("/api/blob")
@@ -97,8 +130,10 @@ export default function ResultsPage() {
 
         // ── Videos from blob ──
         const videoItems: HistoryItem[] = (videos ?? []).map((v) => {
+          const runIdFromPath = v.pathname.match(/video-(\d+)/)?.[1];
           const match = local.find(h => h.videoUrl === v.url)
-            ?? local.find(h => Math.abs(new Date(h.createdAt).getTime() - new Date(v.uploadedAt).getTime()) < 60000);
+            ?? (runIdFromPath ? local.find(h => String(h.runId) === runIdFromPath) : undefined)
+            ?? local.find(h => h.status !== "failed" && Math.abs(new Date(h.createdAt).getTime() - new Date(v.uploadedAt).getTime()) < 30000);
           return {
             id: match?.id ?? v.pathname,
             title: match?.title ?? v.pathname.replace(/^.*video-/, "video ").replace(".mp4", ""),
@@ -161,7 +196,7 @@ export default function ResultsPage() {
       })
       .finally(() => setLoadingBlob(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeProfile]);
 
   const updateHistory = (items: HistoryItem[]) => {
     setHistory(items);
@@ -184,11 +219,12 @@ export default function ResultsPage() {
     setPublishing(platform); setPublishErr(null);
     try {
       const isImage = item.mediaType === "image" || item.mediaType === "carousel";
+      const publishProfile = activeProfile === "all" ? (localStorage.getItem("vf_profile") ?? "creavoo") : activeProfile;
       const body = isImage
         ? item.mediaType === "carousel"
-          ? { platform: "instagram", imageUrls: item.imageUrls, caption: captionText(item), mediaType: "carousel" }
-          : { platform: "instagram", imageUrl: item.imageUrl, caption: captionText(item), mediaType: "image" }
-        : { platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true };
+          ? { platform: "instagram", imageUrls: item.imageUrls, caption: captionText(item), mediaType: "carousel", profile: publishProfile }
+          : { platform: "instagram", imageUrl: item.imageUrl, caption: captionText(item), mediaType: "image", profile: publishProfile }
+        : { platform, videoUrl: item.videoUrl, caption: captionText(item), thumbnailUrl: item.thumbnailUrl, igShareToFeed: item.igShareToFeed ?? true, profile: publishProfile };
 
       const res = await fetch("/api/publish", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -237,9 +273,13 @@ export default function ResultsPage() {
     setDeleting(null);
   };
 
-  const done = history.filter(h => h.status === "done");
-  const rendering = history.filter(h => h.status === "rendering");
-  const failed = history.filter(h => h.status === "failed");
+  const filteredHistory = activeProfile === "all"
+    ? history
+    : history.filter(h => (h.profile ?? "creavoo") === activeProfile);
+
+  const done = filteredHistory.filter(h => h.status === "done");
+  const rendering = filteredHistory.filter(h => h.status === "rendering");
+  const failed = filteredHistory.filter(h => h.status === "failed");
 
   const totalSlides = selected?.imageUrls?.length ?? 0;
 
@@ -253,14 +293,50 @@ export default function ResultsPage() {
           <div className="p-4 border-b border-white/[0.06]">
             <h2 className="font-black text-white text-base">Results</h2>
             <p className="text-xs text-zinc-500 mt-0.5">{done.length} selesai · {rendering.length} berjalan · {failed.length} gagal</p>
+            <div className="flex gap-1.5 mt-3 p-1 rounded-xl w-fit" style={{ background: "#0a0a0a", border: "1px solid #ffffff0a" }}>
+              {PROFILES.map(p => {
+                const active = activeProfile === p.id;
+                return (
+                  <button key={p.id} onClick={() => {
+                    setSelected(null);
+                    pollIntervalsRef.current.forEach(id => clearInterval(id));
+                    pollIntervalsRef.current.clear();
+                    if (p.id === "all") {
+                      setActiveProfile("all");
+                    } else {
+                      setActiveProfile(p.id);
+                      localStorage.setItem("vf_profile", p.id);
+                      setLoadingBlob(true);
+                      setHistory([]);
+                    }
+                  }}
+                    className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                    style={{
+                      background: active ? p.color + "20" : "transparent",
+                      color: active ? p.color : "#52525b",
+                      border: active ? `1px solid ${p.color}40` : "1px solid transparent",
+                    }}>
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1">
+          <SkeletonStyle />
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1.5">
             {loadingBlob && (
-              <div className="flex items-center justify-center mt-10 gap-2 text-zinc-600">
-                <span className="w-3.5 h-3.5 border border-zinc-600 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs">Memuat dari cloud…</span>
-              </div>
+              <>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="rounded-xl p-3 flex items-center gap-3" style={{ background: "#ffffff06" }}>
+                    <Sk w={36} h={36} rounded={10} />
+                    <div className="flex-1 flex flex-col gap-2">
+                      <Sk h={11} w={`${55 + (i % 3) * 12}%`} rounded={5} />
+                      <Sk h={9} w="35%" rounded={5} />
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
             {!loadingBlob && history.length === 0 && (
               <p className="text-zinc-600 text-xs text-center mt-10">Belum ada konten.</p>
@@ -393,7 +469,7 @@ export default function ResultsPage() {
                 {/* Platform buttons */}
                 {(selected.mediaType === "video" || !selected.mediaType) ? (
                   <div className="flex gap-2">
-                    {selected.tiktokUrl ? (
+                    {activeProfile !== "zaportfolio" && (selected.tiktokUrl ? (
                       <a href={selected.tiktokUrl !== "uploaded" ? selected.tiktokUrl : undefined} target="_blank" rel="noopener noreferrer"
                         className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-green-400 border border-green-800/40"
                         style={{ background: "#111113" }}>
@@ -406,7 +482,7 @@ export default function ResultsPage() {
                         {publishing === "tiktok" ? <span className="w-3.5 h-3.5 border border-zinc-400 border-t-transparent rounded-full animate-spin" /> : "🎵"}
                         Upload TikTok
                       </button>
-                    )}
+                    ))}
                     {selected.instagramUrl ? (
                       <a href={selected.instagramUrl !== "uploaded" ? selected.instagramUrl : undefined} target="_blank" rel="noopener noreferrer"
                         className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-green-400 border border-green-800/40"
