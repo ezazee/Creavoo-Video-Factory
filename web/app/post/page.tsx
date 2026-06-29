@@ -333,16 +333,32 @@ export default function PostPage() {
     setStep("generating"); setError(null); setPostData(null);
     setCarouselSlides([]); setSlideIndex(0);
     const t0 = Date.now();
+    let ticker: ReturnType<typeof setInterval> | null = null;
     try {
       addLog("Memulai generate…");
       addLog(`Topik: "${topic}"`);
       if (activeProfile === "creavoo" && useKnowledge) addLog("Memuat knowledge base Creavoo…");
       addLog("Mengambil memory topik sebelumnya…");
       addLog("Mengirim ke AI untuk menulis script…");
+
+      const tickerStart = Date.now();
+      ticker = setInterval(() => {
+        const elapsed = ((Date.now() - tickerStart) / 1000).toFixed(0);
+        const last = genLogsRef.current[genLogsRef.current.length - 1];
+        if (last?.msg.startsWith("Mengirim ke AI") || last?.msg.startsWith("⏳")) {
+          genLogsRef.current = [
+            ...genLogsRef.current.slice(0, -1),
+            { ts: last.ts, msg: `⏳ AI masih menulis… (${elapsed}s)`, type: "info" as const },
+          ];
+          setGenLogs([...genLogsRef.current]);
+        }
+      }, 3000);
+
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false }),
       });
+      if (ticker) clearInterval(ticker);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       addLog(`Script selesai dalam ${((Date.now() - t0) / 1000).toFixed(1)}s — "${data.videoTitle}"`, "ok");
@@ -350,6 +366,7 @@ export default function PostPage() {
       setPostData(data);
       setStep("idle");
     } catch (e) {
+      if (ticker) clearInterval(ticker);
       const msg = String(e);
       addLog(msg, "error");
       setError(msg);
