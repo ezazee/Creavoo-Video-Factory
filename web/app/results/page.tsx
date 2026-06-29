@@ -143,6 +143,7 @@ export default function ResultsPage() {
             caption: match?.caption, hashtags: match?.hashtags,
             tiktokUrl: match?.tiktokUrl, instagramUrl: match?.instagramUrl,
             autoTikTok: match?.autoTikTok, autoInstagram: match?.autoInstagram, igShareToFeed: match?.igShareToFeed,
+            profile: match?.profile ?? "creavoo",
           };
         });
 
@@ -157,6 +158,7 @@ export default function ResultsPage() {
             createdAt: match?.createdAt ?? img.uploadedAt,
             caption: match?.caption, hashtags: match?.hashtags,
             instagramUrl: match?.instagramUrl,
+            profile: match?.profile ?? "creavoo",
           };
         });
 
@@ -172,6 +174,7 @@ export default function ResultsPage() {
             createdAt: match?.createdAt ?? c.uploadedAt,
             caption: match?.caption, hashtags: match?.hashtags,
             instagramUrl: match?.instagramUrl,
+            profile: match?.profile ?? "creavoo",
           };
         });
 
