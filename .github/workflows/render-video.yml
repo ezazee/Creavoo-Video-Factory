@@ -129,22 +129,11 @@ jobs:
 
       - name: Render chunk ${{ matrix.chunk }}
         run: |
-          TOTAL=${{ needs.prepare.outputs.total_frames }}
+          ESTIMATED_TOTAL=${{ needs.prepare.outputs.total_frames }}
           CHUNK=${{ matrix.chunk }}
           CHUNKS=4
-          SIZE=$(( (TOTAL + CHUNKS - 1) / CHUNKS ))
-          START=$(( CHUNK * SIZE ))
-          END=$(( START + SIZE - 1 ))
-          [ $END -ge $TOTAL ] && END=$(( TOTAL - 1 ))
 
-          echo "Chunk $CHUNK: frames $START–$END of $TOTAL"
-
-          if [ $START -ge $TOTAL ]; then
-            echo "Chunk $CHUNK is beyond total frames, skipping."
-            mkdir -p out && touch out/chunk-${CHUNK}.mp4
-            exit 0
-          fi
-
+          # Build props sekali, dipakai untuk probe + render
           PROPS=$(python3 - <<'PYEOF'
           import json, os, urllib.request
           props = json.loads(os.environ["PROPS_JSON"])
@@ -162,6 +151,34 @@ jobs:
           print(json.dumps(props))
           PYEOF
           )
+
+          # Probe actual frame count dari komposisi — lebih akurat dari estimasi MP3
+          COMP_OUTPUT=$(npx remotion compositions --props="$PROPS" 2>&1 || true)
+          ACTUAL_TOTAL=$(echo "$COMP_OUTPUT" | python3 -c "
+          import sys, re
+          text = sys.stdin.read()
+          m = re.search(r'GeneratedVideo\s+[\d.]+\s+sec\s+(\d+)', text)
+          if m: print(m.group(1))
+          " 2>/dev/null || echo "")
+
+          if [ -z "$ACTUAL_TOTAL" ] || [ "$ACTUAL_TOTAL" -le 0 ] 2>/dev/null; then
+            echo "⚠ Probe failed, falling back to estimated: $ESTIMATED_TOTAL"
+            ACTUAL_TOTAL=$ESTIMATED_TOTAL
+          fi
+          echo "✓ Actual frames: $ACTUAL_TOTAL (estimated: $ESTIMATED_TOTAL)"
+
+          SIZE=$(( (ACTUAL_TOTAL + CHUNKS - 1) / CHUNKS ))
+          START=$(( CHUNK * SIZE ))
+          END=$(( START + SIZE - 1 ))
+          [ $END -ge $ACTUAL_TOTAL ] && END=$(( ACTUAL_TOTAL - 1 ))
+
+          echo "Chunk $CHUNK: frames $START–$END of $ACTUAL_TOTAL"
+
+          if [ $START -ge $ACTUAL_TOTAL ]; then
+            echo "Chunk $CHUNK is beyond actual total frames ($ACTUAL_TOTAL), skipping."
+            mkdir -p out && touch out/chunk-${CHUNK}.mp4
+            exit 0
+          fi
 
           mkdir -p out
           npx remotion render GeneratedVideo out/chunk-${CHUNK}.mp4 \
