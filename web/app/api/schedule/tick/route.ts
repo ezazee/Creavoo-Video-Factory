@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { list } from "@vercel/blob";
 import { loadSettings, loadRecentJobs, saveJob, getDayConfig, type ScheduleJob } from "../route";
 import { sendTelegram } from "@/lib/telegram";
@@ -118,16 +118,7 @@ async function processPendingJobs(profile = "creavoo") {
   return log;
 }
 
-export async function GET(req: NextRequest) {
-  // Vercel Cron verification
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const force = req.nextUrl.searchParams.get("force") === "true";
-  const dryrun = req.nextUrl.searchParams.get("dryrun") === "true";
-  const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
+async function runTick(force: boolean, dryrun: boolean, profile: string) {
   const log: string[] = [];
 
   // Step 1: proses rendering jobs yang sudah selesai
@@ -148,13 +139,13 @@ export async function GET(req: NextRequest) {
 
   if (!force) {
     if (!settings.enabled) {
-      return NextResponse.json({ skipped: "schedule disabled", log });
+      return { skipped: "schedule disabled", log };
     }
     if (!settings.days.includes(wibDay)) {
-      return NextResponse.json({ skipped: `not scheduled on day ${wibDay}`, log });
+      return { skipped: `not scheduled on day ${wibDay}`, log };
     }
     if (!isVideoTime && !isCarouselTime) {
-      return NextResponse.json({ skipped: `not scheduled at hour ${wibHour} WIB`, log });
+      return { skipped: `not scheduled at hour ${wibHour} WIB`, log };
     }
     log.push(`triggered at ${wibHour}:00 WIB day=${wibDay} — video=${isVideoTime} carousel=${isCarouselTime}`);
   } else {
@@ -309,8 +300,29 @@ export async function GET(req: NextRequest) {
 
   if (dryrun) {
     log.push("✓ DRY RUN selesai — semua sistem OK");
-    return NextResponse.json({ ok: true, dryrun: true, log });
+    return { ok: true, dryrun: true, log };
   }
 
-  return NextResponse.json({ ok: true, results, log });
+  return { ok: true, results, log };
+}
+
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const force = req.nextUrl.searchParams.get("force") === "true";
+  const dryrun = req.nextUrl.searchParams.get("dryrun") === "true";
+  const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
+
+  // Respond immediately to avoid cronjob.org timeout, process in background
+  after(async () => {
+    await runTick(force, dryrun, profile).catch(async (e) => {
+      await sendTelegram(`❌ <b>Schedule tick error</b>\n⚠️ ${String(e).slice(0, 300)}`).catch(() => {});
+    });
+  });
+
+  return NextResponse.json({ ok: true, message: "tick started", profile });
+}
 }

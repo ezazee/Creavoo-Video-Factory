@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
 type HistoryItem = { id: string; title: string; status: "done" | "rendering" | "failed"; accent: string; createdAt: string };
@@ -11,7 +11,13 @@ export default function Sidebar({ history: historyProp, onSelectHistory }: {
   onSelectHistory?: (id: string) => void;
 }) {
   const path = usePathname();
+  const router = useRouter();
   const [localHistory, setLocalHistory] = useState<HistoryItem[]>([]);
+
+  const logout = async () => {
+    await fetch("/api/auth", { method: "DELETE" });
+    router.push("/login");
+  };
 
   useEffect(() => {
     const stored: HistoryItem[] = JSON.parse(localStorage.getItem("vf_history") ?? "[]");
@@ -77,6 +83,16 @@ export default function Sidebar({ history: historyProp, onSelectHistory }: {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
           Buat Video Baru
         </Link>
+      </div>
+
+      {/* Logout */}
+      <div className="px-3 pb-2">
+        <button onClick={logout}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-zinc-600 hover:text-red-400 transition-colors"
+          style={{ border: "1px solid #ffffff06" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Logout
+        </button>
       </div>
 
       {/* History — tampil di semua halaman */}

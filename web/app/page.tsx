@@ -540,7 +540,7 @@ export default function Home() {
             </div>{/* end left */}
 
             {/* RIGHT — phone preview */}
-            <div style={{ width: 280, flexShrink: 0, borderLeft: "1px solid #ffffff08", display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: 18, padding: "32px 24px", overflowY: "auto" }}>
+            <div style={{ width: 380, flexShrink: 0, borderLeft: "1px solid #ffffff08", display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: 18, padding: "32px 28px", overflowY: "auto" }}>
 
               <div style={{ textAlign: "center" }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: "#3f3f46", textTransform: "uppercase", letterSpacing: 2, marginBottom: 4 }}>Preview</p>
@@ -548,7 +548,7 @@ export default function Home() {
               </div>
 
               {/* Phone frame */}
-              <div style={{ position: "relative", width: 200, height: 356, borderRadius: 28, overflow: "hidden", background: activeProfile === "zaportfolio" ? "#ffffff" : "#f0f0f8", boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)" }}>
+              <div style={{ position: "relative", width: 280, height: 498, borderRadius: 36, overflow: "hidden", background: activeProfile === "zaportfolio" ? "#ffffff" : "#f0f0f8", boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)" }}>
                 {activeProfile === "zaportfolio" ? (<>
                   <svg style={{ position: "absolute", top: 0, right: 0 }} width="100" height="100" viewBox="0 0 100 100">
                     <defs>
