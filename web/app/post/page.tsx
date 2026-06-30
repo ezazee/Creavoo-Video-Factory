@@ -83,8 +83,8 @@ function ZaportfolioBg({ ac }: { ac: string }) {
         <polygon points="24,2 46,46 2,46" fill="none" stroke={navy} strokeWidth="2" opacity="0.22" />
         <polygon points="24,14 38,38 10,38" fill="none" stroke={navy} strokeWidth="1.5" opacity="0.12" />
       </svg>
-      {/* Accent color bar */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, background: ac, opacity: 0.6 }} />
+      {/* Navy bottom bar */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 4, background: "#1a3358", opacity: 0.7 }} />
     </>
   );
 }
@@ -120,7 +120,7 @@ function PostPreview({
   watermarkHandle?: string; watermarkLogoUrl?: string | null;
   profile?: string;
 }) {
-  const ac = data.accent || "#6366f1";
+  const ac = profile === "zaportfolio" ? "#1a3358" : (data.accent || "#6366f1");
   const tips = data.tips.slice(0, 5);
   const totalSlides = tips.length + 2;
   const isZap = profile === "zaportfolio";
