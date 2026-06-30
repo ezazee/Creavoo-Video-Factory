@@ -201,7 +201,6 @@ export default function Home() {
     const id = Date.now().toString();
     setActiveId(id);
     const t0 = Date.now();
-    let ticker: ReturnType<typeof setInterval> | null = null;
     try {
       addLog("Memulai generate…");
       addLog(`Topik: "${topic}"`);
@@ -209,27 +208,51 @@ export default function Home() {
       addLog("Mengambil memory topik sebelumnya…");
       addLog("Mengirim ke AI untuk menulis script…");
 
-      // Ticker: update elapsed time tiap 3 detik selama nunggu AI
-      const tickerStart = Date.now();
-      ticker = setInterval(() => {
-        const elapsed = ((Date.now() - tickerStart) / 1000).toFixed(0);
-        const last = genLogsRef.current[genLogsRef.current.length - 1];
-        if (last?.msg.startsWith("Mengirim ke AI") || last?.msg.startsWith("⏳")) {
-          genLogsRef.current = [
-            ...genLogsRef.current.slice(0, -1),
-            { ts: last.ts, msg: `⏳ AI masih menulis… (${elapsed}s)`, type: "info" as const },
-          ];
-          setGenLogs([...genLogsRef.current]);
-        }
-      }, 3000);
-
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false, profile: activeProfile }),
       });
-      if (ticker) clearInterval(ticker);
       if (!res.ok) throw new Error(await res.text());
-      const data: SceneData = await res.json();
+      if (!res.body) throw new Error("No response body");
+
+      // Baca stream SSE
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      let data: SceneData | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            if (evt.type === "token") {
+              const last = genLogsRef.current[genLogsRef.current.length - 1];
+              if (last?.msg.startsWith("Mengirim ke AI") || last?.msg.startsWith("✍️")) {
+                genLogsRef.current = [
+                  ...genLogsRef.current.slice(0, -1),
+                  { ts: last.ts, msg: `✍️ AI menulis… (${evt.len} karakter)`, type: "info" as const },
+                ];
+                setGenLogs([...genLogsRef.current]);
+              }
+            } else if (evt.type === "error") {
+              throw new Error(evt.message);
+            } else if (evt.type === "done") {
+              data = evt.data as SceneData;
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof SyntaxError) continue;
+            throw parseErr;
+          }
+        }
+      }
+
+      if (!data) throw new Error("AI tidak mengembalikan hasil yang valid");
       addLog(`Script selesai dalam ${((Date.now() - t0) / 1000).toFixed(1)}s — "${data.videoTitle}"`, "ok");
       addLog(`${data.tips.length} tips · layout: ${data.layout ?? "center"}`, "ok");
       setPreview(data);
@@ -250,7 +273,6 @@ export default function Home() {
       setStep("rendering");
       pollStatus(id, runId);
     } catch (e) {
-      if (ticker) clearInterval(ticker);
       const msg = e instanceof Error ? e.message : "Terjadi error";
       addLog(msg, "error");
       setError(msg);

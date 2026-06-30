@@ -73,7 +73,7 @@ export const TipSceneBold: React.FC<Props> = ({
 
       {/* ZONA ATAS — emoji + title + divider. Terkunci di area atas-tengah, tidak pernah bergerak. */}
       <div style={{
-        position: "absolute", top: 320, left: 80, right: 80,
+        position: "absolute", top: 240, left: 80, right: 80,
         display: "flex", flexDirection: "column", alignItems: "center",
       }}>
         <div style={{
@@ -99,7 +99,7 @@ export const TipSceneBold: React.FC<Props> = ({
 
       {/* ZONA BAWAH — subtitle & visual berbagi slot absolute yang SAMA. Crossfade tanpa overlap text. */}
       <div style={{
-        position: "absolute", top: 1050, left: 80, right: 80, bottom: 220,
+        position: "absolute", top: 880, left: 80, right: 80, bottom: 200,
         display: "flex", flexDirection: "column", justifyContent: "flex-start",
       }}>
         {/* Subtitle */}

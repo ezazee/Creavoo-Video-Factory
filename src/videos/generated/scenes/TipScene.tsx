@@ -56,7 +56,7 @@ export const TipScene: React.FC<Props> = ({
     <AbsoluteFill style={{ opacity: 1 - exit }}>
       {/* ZONA ATAS — number badge + emoji + title. Terkunci, tidak bergerak. */}
       <div style={{
-        position: "absolute", top: 340, left: 80, right: 80,
+        position: "absolute", top: 260, left: 80, right: 80,
         display: "flex", flexDirection: "column", alignItems: "center",
       }}>
         <div style={{
@@ -85,7 +85,7 @@ export const TipScene: React.FC<Props> = ({
 
       {/* ZONA BAWAH — subtitle & visual berbagi slot absolute yang SAMA. */}
       <div style={{
-        position: "absolute", top: 1080, left: 80, right: 80, bottom: 200,
+        position: "absolute", top: 900, left: 80, right: 80, bottom: 180,
       }}>
         <p style={{
           position: "absolute", top: 0, left: 0, right: 0,

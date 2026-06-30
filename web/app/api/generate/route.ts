@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
@@ -219,7 +219,7 @@ function buildMemoryBlock(entries: string[]): string {
 
 export async function POST(req: NextRequest) {
   const { topic, useKnowledge = true, profile = "creavoo" } = await req.json();
-  if (!topic) return NextResponse.json({ error: "topic required" }, { status: 400 });
+  if (!topic) return new Response(JSON.stringify({ error: "topic required" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
   const isZap = profile === "zaportfolio";
   const knowledge = (!isZap && useKnowledge) ? loadCreavooKnowledge() : "";
@@ -253,71 +253,88 @@ export async function POST(req: NextRequest) {
 
   const memoryBlock = buildMemoryBlock(previousTitles);
 
-  let data = null;
-  let lastRaw = "";
+  const systemPrompt = buildSystemPrompt(useKnowledge, knowledge + memoryBlock + analyticsHint, isZap ? "zaportfolio" : "creavoo");
+  const userPrompt = isZap
+    ? `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @zaportfolio\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips — prioritaskan "code" dan "comparison" untuk konten developer\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang cocok untuk konten developer Indonesia`
+    : `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const completion = await client.chat.completions.create({
-      model: process.env.AI_MODEL ?? "creavoo-combo",
-      messages: [
-        {
-          role: "system",
-          content: buildSystemPrompt(useKnowledge, knowledge + memoryBlock + analyticsHint, isZap ? "zaportfolio" : "creavoo"),
-        },
-        {
-          role: "user",
-          content: isZap
-            ? `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @zaportfolio\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips — prioritaskan "code" dan "comparison" untuk konten developer\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang cocok untuk konten developer Indonesia`
-            : `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`,
-        },
-      ],
-      temperature: 0.85,
-      max_tokens: 4000,
-    });
+  const encoder = new TextEncoder();
 
-    lastRaw = completion.choices[0].message.content ?? "";
+  function sendEvent(controller: ReadableStreamDefaultController, payload: object) {
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+  }
 
-    let jsonStr = lastRaw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-    const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-    if (jsonMatch) jsonStr = jsonMatch[0];
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const aiStream = await client.chat.completions.create({
+          model: process.env.AI_MODEL ?? "creavoo-combo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.85,
+          max_tokens: 2200,
+          stream: true,
+        });
 
-    try {
-      const parsed = JSON.parse(jsonStr);
-      if (
-        parsed.videoTitle &&
-        Array.isArray(parsed.tips) && parsed.tips.length === 5 &&
-        Array.isArray(parsed.scenes) && parsed.scenes.length === 7
-      ) {
-        data = parsed;
-        break;
+        let accumulated = "";
+        for await (const chunk of aiStream) {
+          const token = chunk.choices[0]?.delta?.content ?? "";
+          if (token) {
+            accumulated += token;
+            sendEvent(controller, { type: "token", len: accumulated.length });
+          }
+        }
+
+        // Parse hasil
+        let jsonStr = accumulated.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        let data: Record<string, unknown> | null = null;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.videoTitle && Array.isArray(parsed.tips) && parsed.tips.length === 5 && Array.isArray(parsed.scenes) && parsed.scenes.length === 7) {
+            data = parsed;
+          }
+        } catch { /* fall through */ }
+
+        if (!data) {
+          sendEvent(controller, { type: "error", message: "AI returned invalid JSON" });
+          controller.close();
+          return;
+        }
+
+        if (!["center", "side", "bold"].includes(data.layout as string)) data.layout = "center";
+        if (typeof data.caption !== "string" || !(data.caption as string).trim()) {
+          data.caption = isZap
+            ? `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @zaportfolio buat tips dev lainnya!`
+            : `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
+        }
+        if (!Array.isArray(data.hashtags) || (data.hashtags as string[]).length === 0) {
+          data.hashtags = isZap
+            ? ["fyp", "developer", "programmer", "coding", "belajarcoding", "tipscoding", "softwaredeveloper"]
+            : ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
+        }
+        data.hashtags = (data.hashtags as string[]).map((h) => h.replace(/^#/, "")).slice(0, 15);
+        data.knowledgeUsed = !isZap && useKnowledge;
+
+        appendMemory(`${topic} → ${data.videoTitle}`).catch(() => {});
+
+        sendEvent(controller, { type: "done", data });
+      } catch (err) {
+        sendEvent(controller, { type: "error", message: err instanceof Error ? err.message : "Unknown error" });
       }
-    } catch {
-      // retry
-    }
-  }
+      controller.close();
+    },
+  });
 
-  if (!data) {
-    return NextResponse.json({ error: "AI returned invalid JSON", raw: lastRaw }, { status: 500 });
-  }
-
-  // layout dari AI, fallback center
-  if (!["center", "side", "bold"].includes(data.layout)) data.layout = "center";
-
-  // fallback caption/hashtags kalau AI lupa
-  if (typeof data.caption !== "string" || !data.caption.trim()) {
-    data.caption = isZap
-      ? `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @zaportfolio buat tips dev lainnya!`
-      : `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
-  }
-  if (!Array.isArray(data.hashtags) || data.hashtags.length === 0) {
-    data.hashtags = isZap
-      ? ["fyp", "developer", "programmer", "coding", "belajarcoding", "tipscoding", "softwaredeveloper"]
-      : ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
-  }
-  data.hashtags = data.hashtags.map((h: string) => h.replace(/^#/, "")).slice(0, 15);
-  data.knowledgeUsed = !isZap && useKnowledge;
-
-  appendMemory(`${topic} → ${data.videoTitle}`).catch(() => {});
-
-  return NextResponse.json(data);
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }

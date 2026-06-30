@@ -72,7 +72,7 @@ export const TipSceneSide: React.FC<Props> = ({
       </div>
 
       {/* ZONA ATAS — number + emoji + title + line. Terkunci. */}
-      <div style={{ position: "absolute", top: 300, left: 72, right: 60 }}>
+      <div style={{ position: "absolute", top: 220, left: 72, right: 60 }}>
         <div style={{
           width: 80, height: 80, borderRadius: "50%", background: accent,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -102,7 +102,7 @@ export const TipSceneSide: React.FC<Props> = ({
       </div>
 
       {/* ZONA BAWAH — subtitle & visual berbagi slot absolute yang SAMA. */}
-      <div style={{ position: "absolute", top: 1080, left: 72, right: 60, bottom: 180 }}>
+      <div style={{ position: "absolute", top: 900, left: 72, right: 60, bottom: 160 }}>
         <p style={{
           position: "absolute", top: 0, left: 0, right: 0,
           fontSize: 34, fontWeight: 600, color: isZap ? "#2d4a7a" : "#71717a", lineHeight: 1.4,
