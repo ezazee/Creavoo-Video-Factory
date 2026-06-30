@@ -219,6 +219,7 @@ function buildMemoryBlock(entries: string[]): string {
 
 export async function POST(req: NextRequest) {
   const { topic, useKnowledge = true, profile = "creavoo" } = await req.json();
+  const currentYear = new Date().getFullYear();
   if (!topic) return new Response(JSON.stringify({ error: "topic required" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
   const isZap = profile === "zaportfolio";
@@ -253,10 +254,10 @@ export async function POST(req: NextRequest) {
 
   const memoryBlock = buildMemoryBlock(previousTitles);
 
-  const systemPrompt = buildSystemPrompt(useKnowledge, knowledge + memoryBlock + analyticsHint, isZap ? "zaportfolio" : "creavoo");
+  const systemPrompt = `Tahun sekarang adalah ${currentYear}. Jika menyebut tahun dalam konten, gunakan ${currentYear}, BUKAN 2025.\n\n` + buildSystemPrompt(useKnowledge, knowledge + memoryBlock + analyticsHint, isZap ? "zaportfolio" : "creavoo");
   const userPrompt = isZap
-    ? `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @zaportfolio\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips — prioritaskan "code" dan "comparison" untuk konten developer\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang cocok untuk konten developer Indonesia`
-    : `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`;
+    ? `Tahun sekarang ${currentYear}. Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @zaportfolio\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips — prioritaskan "code" dan "comparison" untuk konten developer\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang cocok untuk konten developer Indonesia`
+    : `Tahun sekarang ${currentYear}. Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`;
 
   const encoder = new TextEncoder();
 
