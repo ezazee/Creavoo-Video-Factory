@@ -267,41 +267,56 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const aiStream = await client.chat.completions.create({
-          model: process.env.AI_MODEL ?? "creavoo-combo",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.85,
-          max_tokens: 2200,
-          stream: true,
-        });
+        const messages: { role: "system" | "user"; content: string }[] = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ];
 
-        let accumulated = "";
-        for await (const chunk of aiStream) {
-          const token = chunk.choices[0]?.delta?.content ?? "";
-          if (token) {
-            accumulated += token;
-            sendEvent(controller, { type: "token", len: accumulated.length });
+        let data: Record<string, unknown> | null = null;
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const aiStream = await client.chat.completions.create({
+            model: process.env.AI_MODEL ?? "creavoo-combo",
+            messages,
+            temperature: attempt === 0 ? 0.85 : 0.6,
+            max_tokens: 3500,
+            stream: true,
+          });
+
+          let accumulated = "";
+          for await (const chunk of aiStream) {
+            const token = chunk.choices[0]?.delta?.content ?? "";
+            if (token) {
+              accumulated += token;
+              sendEvent(controller, { type: "token", len: accumulated.length });
+            }
+          }
+
+          // Parse hasil
+          let jsonStr = accumulated.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+          if (jsonMatch) jsonStr = jsonMatch[0];
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.videoTitle && Array.isArray(parsed.tips) && parsed.tips.length === 5 && Array.isArray(parsed.scenes) && parsed.scenes.length === 7) {
+              data = parsed;
+              break;
+            }
+          } catch { /* retry */ }
+
+          if (attempt === 0) {
+            sendEvent(controller, { type: "token", len: 0 }); // reset counter visual
+            // Tambah hint ke messages untuk retry
+            messages.push(
+              { role: "user", content: accumulated },
+              { role: "user", content: "JSON tidak lengkap atau tidak valid. Ulangi dari awal, kembalikan JSON lengkap dan valid saja." }
+            );
           }
         }
 
-        // Parse hasil
-        let jsonStr = accumulated.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-        if (jsonMatch) jsonStr = jsonMatch[0];
-
-        let data: Record<string, unknown> | null = null;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          if (parsed.videoTitle && Array.isArray(parsed.tips) && parsed.tips.length === 5 && Array.isArray(parsed.scenes) && parsed.scenes.length === 7) {
-            data = parsed;
-          }
-        } catch { /* fall through */ }
-
         if (!data) {
-          sendEvent(controller, { type: "error", message: "AI returned invalid JSON" });
+          sendEvent(controller, { type: "error", message: "AI returned invalid JSON setelah 2 percobaan" });
           controller.close();
           return;
         }
