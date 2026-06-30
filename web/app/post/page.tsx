@@ -204,7 +204,7 @@ function PostPreview({
       {!isZap && <WatermarkOverlay handle={watermarkHandle} logoUrl={watermarkLogoUrl} />}
       {isZap && watermarkHandle && (
         <div style={{ position: "absolute", top: 10, right: 12, zIndex: 3 }}>
-          <span style={{ fontSize: 8, fontWeight: 700, color: "#1a3358", background: "rgba(255,255,255,0.85)", borderRadius: 6, padding: "2px 7px" }}>{watermarkHandle}</span>
+          <span style={{ fontSize: 8, fontWeight: 700, color: "#1a3358" }}>{watermarkHandle}</span>
         </div>
       )}
     </div>

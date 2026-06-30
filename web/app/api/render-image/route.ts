@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     style = "creavoo",
   } = body;
 
+  const resolvedAccent = style === "zaportfolio" ? "#1a3358" : accent;
   const [owner, repo] = (process.env.GITHUB_REPO ?? "").split("/");
 
   const res = await fetch(
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
         ref: "main",
         inputs: {
           props_json: JSON.stringify({
-            videoTitle, subtitle, introEmoji, accent, tips, ctaText,
+            videoTitle, subtitle, introEmoji, accent: resolvedAccent, tips, ctaText,
             watermarkHandle: watermarkHandle ?? "",
             watermarkLogoUrl: watermarkLogoUrl ?? null,
           }),
