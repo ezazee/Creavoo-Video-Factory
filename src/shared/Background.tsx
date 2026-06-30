@@ -8,39 +8,52 @@ export const Background: React.FC<{ accent?: string; profile?: "creavoo" | "zapo
   const drift = Math.sin(frame / 120) * 80;
 
   if (profile === "zaportfolio") {
+    const navy = "#1a3358";
+    const lineColor = "#b8cce4";
     return (
       <AbsoluteFill style={{ background: "#ffffff" }}>
-        {/* Grid lines navy */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, #1a3358 1px, transparent 1px), linear-gradient(to bottom, #1a3358 1px, transparent 1px)",
-            backgroundSize: "54px 54px",
-            opacity: 0.06,
-          }}
-        />
-        {/* Diagonal stripe — pojok kanan atas */}
-        <svg style={{ position: "absolute", top: 0, right: 0 }} width="220" height="220" viewBox="0 0 220 220">
+        {/* Top-right diagonal stripe block */}
+        <svg style={{ position: "absolute", top: 0, right: 0 }} width="320" height="320" viewBox="0 0 320 320">
           <defs>
-            <pattern id="bg-diag" x="0" y="0" width="10" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-              <rect width="5" height="18" fill="#1a3358" opacity="0.12" />
+            <pattern id="bg-diag" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <rect width="12" height="28" fill={navy} opacity="0.18" />
             </pattern>
-            <clipPath id="bg-tri-tr"><polygon points="220,0 0,0 220,220" /></clipPath>
+            <clipPath id="bg-tri-tr"><polygon points="320,0 0,0 320,320" /></clipPath>
           </defs>
-          <rect width="220" height="220" fill="url(#bg-diag)" clipPath="url(#bg-tri-tr)" />
+          <rect width="320" height="320" fill="url(#bg-diag)" clipPath="url(#bg-tri-tr)" />
         </svg>
-        {/* Dot grid — pojok kiri bawah */}
-        <svg style={{ position: "absolute", bottom: 0, left: 0 }} width="160" height="160" viewBox="0 0 160 160">
-          {Array.from({ length: 5 }, (_, row) => Array.from({ length: 5 }, (_, col) => (
-            <circle key={`${row}-${col}`} cx={16 + col * 30} cy={16 + row * 30} r="3" fill="#1a3358" opacity="0.15" />
-          )))}
+
+        {/* Bottom-left dot grid */}
+        <svg style={{ position: "absolute", bottom: 0, left: 0 }} width="260" height="260" viewBox="0 0 260 260">
+          {Array.from({ length: 9 }, (_, row) =>
+            Array.from({ length: 9 }, (_, col) => (
+              <circle key={`${row}-${col}`} cx={14 + col * 28} cy={14 + row * 28} r="5.5" fill={navy} opacity="0.28" />
+            ))
+          )}
         </svg>
-        {/* Subtle navy radial untuk depth */}
+
+        {/* Top-left outline triangle */}
+        <svg style={{ position: "absolute", top: 70, left: 55 }} width="140" height="140" viewBox="0 0 140 140">
+          <polygon points="70,8 132,124 8,124" fill="none" stroke={lineColor} strokeWidth="5" />
+        </svg>
+
+        {/* Bottom-right large outline triangle */}
+        <svg style={{ position: "absolute", bottom: 110, right: 90 }} width="120" height="120" viewBox="0 0 120 120">
+          <polygon points="60,6 114,110 6,110" fill="none" stroke={lineColor} strokeWidth="4.5" />
+        </svg>
+
+        {/* Bottom-right small triangle */}
+        <svg style={{ position: "absolute", bottom: 52, right: 52 }} width="76" height="76" viewBox="0 0 76 76">
+          <polygon points="38,4 72,68 4,68" fill="none" stroke={lineColor} strokeWidth="3.5" />
+        </svg>
+
+        {/* Subtle grid lines */}
         <div
-          className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 85% ${10 + drift / 12}%, #1a335810 0%, transparent 45%)`,
+            position: "absolute", inset: 0,
+            backgroundImage: `linear-gradient(to right, ${navy} 1px, transparent 1px), linear-gradient(to bottom, ${navy} 1px, transparent 1px)`,
+            backgroundSize: "54px 54px",
+            opacity: 0.05,
           }}
         />
       </AbsoluteFill>
@@ -49,7 +62,6 @@ export const Background: React.FC<{ accent?: string; profile?: "creavoo" | "zapo
 
   return (
     <AbsoluteFill style={{ background: "#f8f8fa" }}>
-      {/* Grid lines */}
       <div
         className="absolute inset-0"
         style={{
@@ -59,16 +71,12 @@ export const Background: React.FC<{ accent?: string; profile?: "creavoo" | "zapo
           opacity: 0.07,
         }}
       />
-      {/* Accent radial utama */}
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(circle at ${50 + drift / 4}% ${
-            30 + drift / 8
-          }%, ${accent}40 0%, transparent 60%)`,
+          background: `radial-gradient(circle at ${50 + drift / 4}% ${30 + drift / 8}%, ${accent}40 0%, transparent 60%)`,
         }}
       />
-      {/* Accent corner bawah */}
       <div
         className="absolute inset-0"
         style={{

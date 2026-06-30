@@ -100,11 +100,18 @@ Tugasmu: suggest 6 ide topik konten video pendek yang:
 3. Format cocok untuk "5 tips / explained / hidden gems / mistakes / tutorial / beginner vs pro"
 4. Audiens: developer/kreator Indonesia
 
+PENTING — WAJIB FULL BAHASA INDONESIA:
+- Topik HARUS 100% bahasa Indonesia, TIDAK BOLEH ada kata bahasa Inggris
+- Terjemahkan semua istilah teknis ke bahasa Indonesia atau gunakan padanannya
+- Contoh yang SALAH: "5 AI tools gratis yang wajib dicoba" — mengandung kata Inggris
+- Contoh yang BENAR: "Lima alat AI gratis yang wajib dicoba developer"
+- Nama brand/produk boleh tetap (TikTok, Instagram, GitHub, dll)
+
 Format output: JSON array of strings, masing-masing topik maksimal 65 karakter. Hanya JSON, tanpa markdown.`,
       },
       {
         role: "user",
-        content: `${searchContext}\n\nBuat 6 ide topik video pendek yang relevan dan trending di 2026.`,
+        content: `${searchContext}\n\nBuat 6 ide topik video pendek yang relevan dan trending di 2026. INGAT: semua topik HARUS full bahasa Indonesia, tidak boleh ada kata bahasa Inggris selain nama brand/produk.`,
       },
     ],
     temperature: 0.9,
@@ -126,12 +133,12 @@ Format output: JSON array of strings, masing-masing topik maksimal 65 karakter. 
 
   if (topics.length === 0) {
     topics = isZaportfolio ? [
-      "5 AI tools gratis yang wajib dicoba developer 2026",
-      "Cara belajar coding lebih cepat dengan AI",
-      "Tech stack terbaik untuk web developer 2026",
-      "5 tips UI design yang bikin app kamu kelihatan pro",
-      "Kesalahan desainer pemula saat bikin landing page",
-      "Prompt engineering tricks untuk developer",
+      "Lima alat kecerdasan buatan gratis wajib dicoba developer",
+      "Cara belajar pemrograman lebih cepat dengan bantuan AI",
+      "Tumpukan teknologi terbaik untuk pengembang web tahun ini",
+      "Lima tips desain antarmuka yang bikin aplikasimu terlihat profesional",
+      "Kesalahan desainer pemula saat bikin halaman arahan",
+      "Cara pakai GitHub Copilot supaya produktivitas coding naik tiga kali",
     ] : [
       "5 alasan akun TikTok kamu stuck dan cara fixnya",
       "Cara audit akun Instagram sendiri dalam 5 menit",

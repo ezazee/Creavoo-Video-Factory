@@ -17,11 +17,13 @@ type Props = {
   accent: string;
   bullets?: string[];
   visual?: VisualData;
+  profile?: "creavoo" | "zaportfolio";
 };
 
 export const TipScene: React.FC<Props> = ({
-  duration, number, title, subtitle, emoji, accent, bullets, visual,
+  duration, number, title, subtitle, emoji, accent, bullets, visual, profile = "creavoo",
 }) => {
+  const isZap = profile === "zaportfolio";
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -74,7 +76,7 @@ export const TipScene: React.FC<Props> = ({
           {emoji}
         </div>
         <p style={{
-          fontSize: 64, fontWeight: 900, color: "#18181b", textAlign: "center",
+          fontSize: 64, fontWeight: 900, color: isZap ? "#1a3358" : "#18181b", textAlign: "center",
           lineHeight: 1.1, opacity: titleIn, transform: `translateY(${(1 - titleIn) * 24}px)`,
         }}>
           {title}
@@ -87,7 +89,7 @@ export const TipScene: React.FC<Props> = ({
       }}>
         <p style={{
           position: "absolute", top: 0, left: 0, right: 0,
-          fontSize: 34, fontWeight: 600, color: "#71717a", textAlign: "center",
+          fontSize: 34, fontWeight: 600, color: isZap ? "#2d4a7a" : "#71717a", textAlign: "center",
           lineHeight: 1.4, opacity: subtitleOpacity,
           transform: `translateY(${(1 - subtitleIn) * 16}px)`,
         }}>

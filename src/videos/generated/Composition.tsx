@@ -39,7 +39,7 @@ export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
 
-const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData }>> = {
+const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; profile?: "creavoo" | "zaportfolio" }>> = {
   center: TipScene,
   side: TipSceneSide,
   bold: TipSceneBold,
@@ -102,6 +102,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
               accent={isZaportfolio ? "#1a3358" : accentColor}
               bullets={tip.bullets}
               visual={tip.visual}
+              profile={profile}
             />
           </Series.Sequence>
         ))}

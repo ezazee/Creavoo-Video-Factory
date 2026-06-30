@@ -9,7 +9,6 @@ const client = new OpenAI({
   apiKey: process.env.AI_API_KEY,
 });
 
-
 function loadCreavooKnowledge(): string {
   try {
     const filePath = path.join(process.cwd(), "knowledge", "creavoo-knowledge.md");
@@ -20,12 +19,7 @@ function loadCreavooKnowledge(): string {
   }
 }
 
-function buildSystemPrompt(useKnowledge: boolean, knowledge: string): string {
-  const knowledgeBlock = useKnowledge && knowledge
-    ? `\n\n---\n## KNOWLEDGE PRODUK CREAVOO (baca ini dulu, jadikan landasan script):\n\n${knowledge}\n\n---\n\nGunakan knowledge Creavoo di atas sebagai:\n- Sumber fakta, angka, dan use case yang akurat\n- Panduan tone dan voice per tipe kreator (lihat Bagian 9)\n- Arahan konten spesifik per platform (lihat Bagian 10)\n- Angle dan sudut pandang per niche (lihat Bagian 11)\n- Definisi tone konten yang diminta (lihat Bagian 12)\n- Konteks pain points yang relevan untuk audiens creator Indonesia\n- Referensi fitur Creavoo jika topik relevan (tapi jangan hard-sell, biarkan natural)\n\n`
-    : `\n\n## ARAHAN KONTEN KNOWLEDGE OFF\n\nBuat konten seputar dunia digital, bisnis online, dan kreator Indonesia — TANPA harus promosi Creavoo.\n\nKategori topik yang tersedia (pilih yang paling relevan dengan topik yang diberikan):\n1. Pertumbuhan akun organik — follower, engagement, algoritma\n2. Pengelolaan bisnis di sosmed — UMKM, branding, jualan online\n3. Rahasia algoritma platform — FYP TikTok, Explore IG, Shorts YouTube\n4. Monetisasi konten — affiliate, endorse, jualan digital, passive income\n5. Psikologi konten viral — hook, scroll stopper, emotional trigger, caption\n6. Produktivitas kreator — batch content, tools gratis, workflow efisien\n7. Personal branding — otoritas niche, konsistensi, dapat klien\n8. Tips teknis kreator — rekam HP, lighting, audio, edit video gratis\n\nTetap bahasa Indonesia casual, tone friendly, dan berikan value yang actionable.\nCTA boleh arahkan ke @creavoo.id sebagai tools yang membantu, tapi bukan hard-sell.\n\n`;
-
-  const layoutGuide = `Pilih layout yang paling cocok untuk topik ini:
+const LAYOUT_GUIDE = `Pilih layout yang paling cocok untuk topik ini:
 - "center" → tips umum, motivasi, insight
 - "side" → tutorial, langkah-langkah, hidden gems
 - "bold" → mistakes, perbandingan, sesuatu yang mengejutkan
@@ -40,7 +34,117 @@ Pilih format narasi yang paling cocok:
 
 Pilih berdasarkan topik yang diberikan user, bukan kebiasaan. Sertakan pilihan dalam field "layout" dan "format" di JSON output.`;
 
-  return `Kamu adalah content creator senior yang bikin script video pendek viral untuk TikTok/Instagram Reels/YouTube Shorts. Target durasi video: 1 menit sampai maksimal 1 menit 30 detik.${knowledgeBlock}${layoutGuide}
+const VISUAL_SCHEMA = `        "visual": {
+        "type": "stat | checklist | bullets | quote | code | comparison (PILIH yang paling cocok — VARIASIKAN, jangan semua sama)",
+        "number": "string (jika type=stat: angka besar, maks 6 karakter, e.g. '3x', '80%', '5 dtk')",
+        "label": "string (jika type=stat: konteks angka, maks 40 karakter)",
+        "items": ["string (jika type=checklist/bullets: maks 38 karakter)", "...", "..."],
+        "text": "string (jika type=quote: insight kuat, maks 90 karakter)",
+        "source": "string (jika type=quote: opsional)",
+        "lines": ["string (jika type=code: baris kode pendek, maks 40 karakter)", "...", "...", "..."],
+        "left": "string (jika type=comparison: versi salah/pemula, maks 50 karakter)",
+        "right": "string (jika type=comparison: versi benar/pro, maks 50 karakter)",
+        "leftLabel": "string (jika type=comparison: label kiri, e.g. '❌ Pemula')",
+        "rightLabel": "string (jika type=comparison: label kanan, e.g. '✅ Pro')"
+      }`;
+
+const VISUAL_RULES = `- Visual type WAJIB BERVARIASI — dari 5 tips, gunakan minimal 3 type berbeda
+  * stat → metrik, waktu, angka impresif yang bisa dikutip
+  * checklist → langkah berurutan yang harus dilakukan
+  * comparison → cara salah vs benar / pemula vs pro — paling engaging
+  * quote → insight atau prinsip kuat yang bikin orang pause
+  * code → snippet pendek, command, syntax
+  * bullets → kalau tidak ada yang lebih cocok
+- Pilih visual type berdasarkan ISI tip, bukan kebiasaan. Comparison dan stat paling viral
+- items/lines: TEPAT 3 item (maks 38 karakter masing-masing)`;
+
+function buildSystemPrompt(
+  useKnowledge: boolean,
+  knowledge: string,
+  profile: "creavoo" | "zaportfolio" = "creavoo"
+): string {
+  if (profile === "zaportfolio") {
+    return `Kamu adalah developer senior yang bikin script video pendek viral untuk TikTok/Instagram Reels/YouTube Shorts. Target audiens: developer dan programmer Indonesia. Target durasi: 1 menit sampai maksimal 1 menit 30 detik.
+
+## KONTEKS BRAND: ZAPORTFOLIO
+
+Zaportfolio adalah akun konten untuk developer, programmer, dan IT enthusiast Indonesia.
+Niche: tips coding, portfolio developer, karir IT, tools developer, productivity programming.
+
+Audiens target:
+- Developer / programmer Indonesia (junior sampai mid-level)
+- Mahasiswa IT dan fresh graduate tech
+- Career switcher yang mau masuk dunia IT
+- Freelancer dan remote worker di bidang tech
+
+Tone & voice Zaportfolio:
+- Bahasa: campuran Indo + istilah teknis yang familiar (git, deploy, debug, stack, dll)
+- Gaya: santai tapi credible, kayak teman senior yang ngasih tips jujur
+- Hindari: terlalu formal, terlalu hype, terlalu "motivational speaker"
+- Boleh: humor programmer (meme culture ok), jargon teknis umum
+
+Topik yang perform untuk Zaportfolio:
+- Tips portfolio yang bikin HRD tertarik
+- Tools dan shortcut yang jarang diketahui junior dev
+- Kesalahan coding atau karir yang umum dilakukan pemula
+- Cara dapet freelance atau remote job sebagai developer Indonesia
+- Review stack atau bahasa pemrograman dengan angle unik
+- Tips belajar coding yang efisien
+- Realita jadi developer (honest take)
+
+CTA selalu ke @zaportfolio.
+
+${LAYOUT_GUIDE}
+
+Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
+{
+  "videoTitle": "string (maks 45 karakter, catchy, pakai angka jika relevan)",
+  "subtitle": "string (maks 65 karakter, hook yang bikin dev scroll stop)",
+  "introEmoji": "string (1 emoji yang paling relevan — boleh emoji teknis: 💻🚀⚡🛠️📦🔧)",
+  "accent": "string (pilih hex color sesuai vibe: #6366f1=AI/modern, #3b82f6=tutorial/informatif, #22c55e=produktivitas/sukses, #f97316=energi/tips, #1a3358=profesional/navy, #ef4444=mistakes/bahaya, #eab308=warning/keuangan, #a855f7=personal brand, #64748b=profesional)",
+  "layout": "string (pilih: center | side | bold — sesuai konten)",
+  "tips": [
+    {
+      "title": "string (maks 35 karakter, nama tip/poin singkat dan kuat)",
+      "subtitle": "string (maks 80 karakter, manfaat atau konteks singkat — boleh pakai istilah teknis)",
+      "emoji": "string (1 emoji)",
+      ${VISUAL_SCHEMA}
+    }
+  ],
+  "ctaText": "string (maks 50 karakter, ajakan follow @zaportfolio yang natural)",
+  "caption": "string (caption siap-post untuk TikTok/Instagram: 2-4 kalimat hook + ringkasan nilai video, casual dev tone, ada call-to-action follow @zaportfolio. JANGAN sertakan hashtag di sini)",
+  "hashtags": ["string (10-15 hashtag relevan TANPA tanda #, campuran broad + niche dev, e.g. 'developer', 'programmer', 'coding', 'belajarcoding', 'fyp')"],
+  "scenes": [
+    { "id": "intro", "text": "string (narasi voiceover intro, TEPAT 2-3 kalimat pendek, hook pain point developer yang langsung to-the-point, bahasa Indonesia casual + sedikit istilah teknis)" },
+    { "id": "tip-1", "text": "string (TEPAT 2-3 kalimat, langsung ke intinya, spesifik dan actionable untuk developer)" },
+    { "id": "tip-2", "text": "string (TEPAT 2-3 kalimat)" },
+    { "id": "tip-3", "text": "string (TEPAT 2-3 kalimat)" },
+    { "id": "tip-4", "text": "string (TEPAT 2-3 kalimat)" },
+    { "id": "tip-5", "text": "string (TEPAT 2-3 kalimat)" },
+    { "id": "outro", "text": "string (TEPAT 2 kalimat, CTA natural yang sebut @zaportfolio)" }
+  ]
+}
+
+Aturan PENTING:
+- Bahasa Indonesia casual dengan istilah teknis yang familiar untuk developer
+- Tone: kayak teman senior dev yang kasih tips jujur — bukan motivasi kosong
+- SETIAP scene MAKSIMAL 3 kalimat pendek — ini untuk video 1 menit, bukan 2 menit
+- Hindari simbol di field scenes/tips/visual: # & / tulis sebagai kata. Tanda @ boleh hanya untuk @zaportfolio di outro
+- Field "caption" boleh pakai @ dan emoji. Field "hashtags" tulis TANPA tanda #
+- Angka HARUS ditulis sebagai kata di scenes: "lima" bukan "5" — KECUALI di field visual
+- Akronim teknis (API, CSS, HTML, SQL, UI, UX, REST, HTTP, JSON, CLI, SDK) boleh as-is
+- tips array: TEPAT 5 item
+${VISUAL_RULES}
+- outro WAJIB sebut "@zaportfolio" secara natural
+- scenes array: TEPAT 7 item dengan id persis: intro, tip-1, tip-2, tip-3, tip-4, tip-5, outro`;
+  }
+
+  // --- CREAVOO ---
+  const knowledgeBlock = useKnowledge && knowledge
+    ? `\n\n---\n## KNOWLEDGE PRODUK CREAVOO (baca ini dulu, jadikan landasan script):\n\n${knowledge}\n\n---\n\nGunakan knowledge Creavoo di atas sebagai:\n- Sumber fakta, angka, dan use case yang akurat\n- Panduan tone dan voice per tipe kreator (lihat Bagian 9)\n- Arahan konten spesifik per platform (lihat Bagian 10)\n- Angle dan sudut pandang per niche (lihat Bagian 11)\n- Definisi tone konten yang diminta (lihat Bagian 12)\n- Konteks pain points yang relevan untuk audiens creator Indonesia\n- Referensi fitur Creavoo jika topik relevan (tapi jangan hard-sell, biarkan natural)\n\n`
+    : `\n\n## ARAHAN KONTEN KNOWLEDGE OFF\n\nBuat konten seputar dunia digital, bisnis online, dan kreator Indonesia — TANPA harus promosi Creavoo.\n\nKategori topik yang tersedia (pilih yang paling relevan dengan topik yang diberikan):\n1. Pertumbuhan akun organik — follower, engagement, algoritma\n2. Pengelolaan bisnis di sosmed — UMKM, branding, jualan online\n3. Rahasia algoritma platform — FYP TikTok, Explore IG, Shorts YouTube\n4. Monetisasi konten — affiliate, endorse, jualan digital, passive income\n5. Psikologi konten viral — hook, scroll stopper, emotional trigger, caption\n6. Produktivitas kreator — batch content, tools gratis, workflow efisien\n7. Personal branding — otoritas niche, konsistensi, dapat klien\n8. Tips teknis kreator — rekam HP, lighting, audio, edit video gratis\n\nTetap bahasa Indonesia casual, tone friendly, dan berikan value yang actionable.\nCTA boleh arahkan ke @creavoo.id sebagai tools yang membantu, tapi bukan hard-sell.\n\n`;
+
+  return `Kamu adalah content creator senior yang bikin script video pendek viral untuk TikTok/Instagram Reels/YouTube Shorts. Target durasi video: 1 menit sampai maksimal 1 menit 30 detik.${knowledgeBlock}${LAYOUT_GUIDE}
 
 Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
 {
@@ -54,19 +158,7 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
       "title": "string (maks 35 karakter, nama tip/poin singkat dan kuat)",
       "subtitle": "string (maks 80 karakter, manfaat atau konteks singkat)",
       "emoji": "string (1 emoji)",
-      "visual": {
-        "type": "stat | checklist | bullets | quote | code | comparison (PILIH yang paling cocok — VARIASIKAN, jangan semua sama)",
-        "number": "string (jika type=stat: angka besar, maks 6 karakter, e.g. '3x', '80%', '5 dtk')",
-        "label": "string (jika type=stat: konteks angka, maks 40 karakter)",
-        "items": ["string (jika type=checklist/bullets: maks 38 karakter)", "...", "..."],
-        "text": "string (jika type=quote: insight kuat, maks 90 karakter)",
-        "source": "string (jika type=quote: opsional, e.g. 'Creator 100K followers')",
-        "lines": ["string (jika type=code: baris kode pendek, maks 40 karakter)", "...", "...", "..."],
-        "left": "string (jika type=comparison: versi salah/pemula, maks 50 karakter)",
-        "right": "string (jika type=comparison: versi benar/pro, maks 50 karakter)",
-        "leftLabel": "string (jika type=comparison: label kiri, e.g. '❌ Pemula')",
-        "rightLabel": "string (jika type=comparison: label kanan, e.g. '✅ Pro')"
-      }
+      ${VISUAL_SCHEMA}
     }
   ],
   "ctaText": "string (maks 50 karakter, ajakan follow @creavoo.id yang natural)",
@@ -92,15 +184,7 @@ Aturan PENTING:
 - Angka HARUS ditulis sebagai kata: "lima" bukan "5", "dua puluh" bukan "20" — KECUALI di field visual (number, items, dll)
 - Akronim (AI, TikTok, Instagram, API, URL) boleh dipakai as-is
 - tips array: TEPAT 5 item
-- Visual type WAJIB BERVARIASI — dari 5 tips, gunakan minimal 3 type berbeda. Jangan semua "bullets"
-  * stat → kalau ada angka/metrik impresif yang bisa dikutip
-  * checklist → langkah yang harus dilakukan berurutan
-  * comparison → cara salah vs benar / pemula vs pro — paling engaging
-  * quote → insight atau prinsip kuat yang bikin orang pause
-  * code → tip teknis dengan contoh konkret (command, formula, syntax)
-  * bullets → kalau tidak ada yang lebih cocok
-- Pilih visual type berdasarkan ISI tip, bukan kebiasaan. Comparison dan stat paling viral
-- items/lines: TEPAT 3 item (maks 38 karakter masing-masing)
+${VISUAL_RULES}
 - outro WAJIB sebut "@creavoo.id" dan "creavoo.com" secara natural
 - scenes array: TEPAT 7 item dengan id persis: intro, tip-1, tip-2, tip-3, tip-4, tip-5, outro`;
 }
@@ -134,17 +218,22 @@ function buildMemoryBlock(entries: string[]): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { topic, useKnowledge = true } = await req.json();
+  const { topic, useKnowledge = true, profile = "creavoo" } = await req.json();
   if (!topic) return NextResponse.json({ error: "topic required" }, { status: 400 });
 
-  const knowledge = useKnowledge ? loadCreavooKnowledge() : "";
+  const isZap = profile === "zaportfolio";
+  const knowledge = (!isZap && useKnowledge) ? loadCreavooKnowledge() : "";
+
+  // Gunakan analytics key sesuai profile
+  const zernioKey = isZap
+    ? process.env.ZERNIO_API_KEY_ZAPORTFOLIO
+    : process.env.ZERNIO_API_KEY_CREAVOO ?? process.env.ZERNIO_API_KEY;
 
   // Jalankan memory + analytics secara paralel
   const [previousTitles, analyticsHint] = await Promise.all([
     readMemory(),
     (async () => {
       try {
-        const zernioKey = process.env.ZERNIO_API_KEY;
         if (!zernioKey) return "";
         const r = await fetch("https://zernio.com/api/v1/analytics/daily-metrics?fromDate=" +
           new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0] +
@@ -171,10 +260,15 @@ export async function POST(req: NextRequest) {
     const completion = await client.chat.completions.create({
       model: process.env.AI_MODEL ?? "creavoo-combo",
       messages: [
-        { role: "system", content: buildSystemPrompt(useKnowledge, knowledge + memoryBlock + analyticsHint) },
+        {
+          role: "system",
+          content: buildSystemPrompt(useKnowledge, knowledge + memoryBlock + analyticsHint, isZap ? "zaportfolio" : "creavoo"),
+        },
         {
           role: "user",
-          content: `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`,
+          content: isZap
+            ? `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @zaportfolio\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips — prioritaskan "code" dan "comparison" untuk konten developer\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang cocok untuk konten developer Indonesia`
+            : `Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`,
         },
       ],
       temperature: 0.85,
@@ -211,15 +305,18 @@ export async function POST(req: NextRequest) {
 
   // fallback caption/hashtags kalau AI lupa
   if (typeof data.caption !== "string" || !data.caption.trim()) {
-    data.caption = `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
+    data.caption = isZap
+      ? `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @zaportfolio buat tips dev lainnya!`
+      : `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
   }
   if (!Array.isArray(data.hashtags) || data.hashtags.length === 0) {
-    data.hashtags = ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
+    data.hashtags = isZap
+      ? ["fyp", "developer", "programmer", "coding", "belajarcoding", "tipscoding", "softwaredeveloper"]
+      : ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
   }
   data.hashtags = data.hashtags.map((h: string) => h.replace(/^#/, "")).slice(0, 15);
-  data.knowledgeUsed = useKnowledge;
+  data.knowledgeUsed = !isZap && useKnowledge;
 
-  // Fire-and-forget — tidak perlu tunggu sebelum return response
   appendMemory(`${topic} → ${data.videoTitle}`).catch(() => {});
 
   return NextResponse.json(data);

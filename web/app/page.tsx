@@ -225,7 +225,7 @@ export default function Home() {
 
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false }),
+        body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false, profile: activeProfile }),
       });
       if (ticker) clearInterval(ticker);
       if (!res.ok) throw new Error(await res.text());
@@ -418,7 +418,7 @@ export default function Home() {
                 <textarea
                   style={{ width: "100%", background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 14, lineHeight: 1.6, resize: "none", fontFamily: "inherit" }}
                   rows={3}
-                  placeholder="Ketik topik video kamu… misal: 5 Git commands yang jarang diketahui developer"
+                  placeholder="Ketik topik video kamu… misal: Lima perintah Git yang jarang diketahui developer"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate(); }}
@@ -630,12 +630,33 @@ export default function Home() {
                   <p style={{ fontSize: 8, fontWeight: 700, color: activeProfile === "zaportfolio" ? "#1a3358" : "#4b5563" }}>{watermarkHandle || "@handle"}</p>
                 </div>
                 {/* content mock */}
-                <div style={{ position: "absolute", left: 18, right: 18, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column" as const, gap: 10, alignItems: "center" }}>
-                  <div style={{ fontSize: 28 }}>🎬</div>
-                  <div style={{ height: 10, borderRadius: 99, width: "100%", background: activeProfile === "zaportfolio" ? "#1a335818" : "rgba(0,0,0,0.08)" }} />
-                  <div style={{ height: 8, borderRadius: 99, width: "80%", background: activeProfile === "zaportfolio" ? "#1a335810" : "rgba(0,0,0,0.06)" }} />
-                  <div style={{ height: 6, borderRadius: 99, width: "60%", background: activeProfile === "zaportfolio" ? "#1a335808" : "rgba(0,0,0,0.04)" }} />
-                </div>
+                {activeProfile === "zaportfolio" ? (
+                  <div style={{ position: "absolute", left: 18, right: 18, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column" as const, gap: 10, alignItems: "center" }}>
+                    {/* ZAPORTFOLIO pill tag */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, background: "#1a335812", border: "1px solid #1a335825" }}>
+                      <span style={{ fontSize: 12 }}>🤖</span>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: "#1a3358", letterSpacing: "0.12em", textTransform: "uppercase" as const }}>Zaportfolio</span>
+                    </div>
+                    {/* title bars */}
+                    <div style={{ width: "100%", display: "flex", flexDirection: "column" as const, gap: 6, alignItems: "center" }}>
+                      <div style={{ height: 9, borderRadius: 4, width: "95%", background: "#1a335828" }} />
+                      <div style={{ height: 9, borderRadius: 4, width: "80%", background: "#1a335820" }} />
+                    </div>
+                    {/* subtitle bar */}
+                    <div style={{ height: 6, borderRadius: 4, width: "70%", background: "#1a335514" }} />
+                    {/* CTA button */}
+                    <div style={{ marginTop: 4, padding: "6px 20px", borderRadius: 8, background: "#1a3358" }}>
+                      <span style={{ fontSize: 9, fontWeight: 800, color: "white" }}>Let's go →</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ position: "absolute", left: 18, right: 18, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column" as const, gap: 10, alignItems: "center" }}>
+                    <div style={{ fontSize: 28 }}>🎬</div>
+                    <div style={{ height: 10, borderRadius: 99, width: "100%", background: "rgba(0,0,0,0.08)" }} />
+                    <div style={{ height: 8, borderRadius: 99, width: "80%", background: "rgba(0,0,0,0.06)" }} />
+                    <div style={{ height: 6, borderRadius: 99, width: "60%", background: "rgba(0,0,0,0.04)" }} />
+                  </div>
+                )}
                 {/* home indicator */}
                 <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, display: "flex", justifyContent: "center" }}>
                   <div style={{ width: 52, height: 4, borderRadius: 99, background: activeProfile === "zaportfolio" ? "#1a335818" : "rgba(0,0,0,0.1)" }} />
