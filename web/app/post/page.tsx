@@ -333,7 +333,6 @@ export default function PostPage() {
     setStep("generating"); setError(null); setPostData(null);
     setCarouselSlides([]); setSlideIndex(0);
     const t0 = Date.now();
-    let ticker: ReturnType<typeof setInterval> | null = null;
     try {
       addLog("Memulai generate…");
       addLog(`Topik: "${topic}"`);
@@ -341,32 +340,57 @@ export default function PostPage() {
       addLog("Mengambil memory topik sebelumnya…");
       addLog("Mengirim ke AI untuk menulis script…");
 
-      const tickerStart = Date.now();
-      ticker = setInterval(() => {
-        const elapsed = ((Date.now() - tickerStart) / 1000).toFixed(0);
-        const last = genLogsRef.current[genLogsRef.current.length - 1];
-        if (last?.msg.startsWith("Mengirim ke AI") || last?.msg.startsWith("⏳")) {
-          genLogsRef.current = [
-            ...genLogsRef.current.slice(0, -1),
-            { ts: last.ts, msg: `⏳ AI masih menulis… (${elapsed}s)`, type: "info" as const },
-          ];
-          setGenLogs([...genLogsRef.current]);
-        }
-      }, 3000);
-
       const res = await fetch("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false }),
+        body: JSON.stringify({ topic, useKnowledge: activeProfile === "creavoo" ? useKnowledge : false, profile: activeProfile }),
       });
-      if (ticker) clearInterval(ticker);
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            if (evt.type === "token") {
+              const last = genLogsRef.current[genLogsRef.current.length - 1];
+              if (last?.msg.startsWith("Mengirim ke AI") || last?.msg.startsWith("✍️")) {
+                genLogsRef.current = [
+                  ...genLogsRef.current.slice(0, -1),
+                  { ts: last.ts, msg: `✍️ AI menulis… (${evt.len} karakter)`, type: "info" as const },
+                ];
+                setGenLogs([...genLogsRef.current]);
+              }
+            } else if (evt.type === "error") {
+              throw new Error(evt.message);
+            } else if (evt.type === "done") {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              data = evt.data as any;
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof SyntaxError) continue;
+            throw parseErr;
+          }
+        }
+      }
+
+      if (!data) throw new Error("AI tidak mengembalikan hasil yang valid");
       addLog(`Script selesai dalam ${((Date.now() - t0) / 1000).toFixed(1)}s — "${data.videoTitle}"`, "ok");
       addLog(`${data.tips.length} tips · layout: ${data.layout ?? "center"}`, "ok");
       setPostData(data);
       setStep("idle");
     } catch (e) {
-      if (ticker) clearInterval(ticker);
       const msg = String(e);
       addLog(msg, "error");
       setError(msg);
@@ -547,35 +571,6 @@ export default function PostPage() {
                   : "✦ Generate Script"}
               </button>
 
-              {/* Live log saat generating */}
-              {step === "generating" && genLogs.length > 0 && (
-                <div className="rounded-2xl border border-white/[0.06] overflow-hidden" style={{ background: "#0d0d0f" }}>
-                  <div className="flex items-center gap-1.5 px-4 py-2 border-b border-white/[0.06]">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-                    <span className="text-[10px] text-zinc-600 ml-2 font-mono">generate.log</span>
-                  </div>
-                  <div className="px-4 py-3 flex flex-col gap-1.5 font-mono">
-                    {genLogs.map((log, i) => {
-                      const elapsed = i === 0 ? "0.0" : ((log.ts - genLogs[0].ts) / 1000).toFixed(1);
-                      return (
-                        <div key={i} className="flex items-start gap-2.5 text-xs">
-                          <span className="text-zinc-700 flex-shrink-0 tabular-nums">+{elapsed}s</span>
-                          <span className={log.type === "ok" ? "text-green-400" : log.type === "error" ? "text-red-400" : "text-zinc-400"}>
-                            {log.type === "ok" ? "✓ " : log.type === "error" ? "✗ " : "› "}{log.msg}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    <div className="flex items-center gap-2.5 text-xs">
-                      <span className="text-zinc-700 flex-shrink-0">       </span>
-                      <span className="w-1.5 h-3.5 bg-zinc-500 animate-pulse rounded-sm" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Render */}
               {postData && step !== "generating" && (
                 <button onClick={render} disabled={step === "rendering"}
@@ -728,6 +723,37 @@ export default function PostPage() {
                       </div>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* Live log di kanan bawah preview */}
+              {genLogs.length > 0 && (
+                <div className="rounded-2xl border border-white/[0.06] overflow-hidden" style={{ background: "#0d0d0f" }}>
+                  <div className="flex items-center gap-1.5 px-4 py-2 border-b border-white/[0.06]">
+                    <span className="w-2 h-2 rounded-full bg-red-500/60" />
+                    <span className="w-2 h-2 rounded-full bg-yellow-500/60" />
+                    <span className="w-2 h-2 rounded-full bg-green-500/60" />
+                    <span className="text-[10px] text-zinc-600 ml-2 font-mono">generate.log</span>
+                  </div>
+                  <div className="px-4 py-3 flex flex-col gap-1.5 font-mono max-h-64 overflow-y-auto">
+                    {genLogs.map((log, i) => {
+                      const elapsed = i === 0 ? "0.0" : ((log.ts - genLogs[0].ts) / 1000).toFixed(1);
+                      return (
+                        <div key={i} className="flex items-start gap-2 text-[11px]">
+                          <span className="text-zinc-700 flex-shrink-0 tabular-nums">+{elapsed}s</span>
+                          <span className={log.type === "ok" ? "text-green-400" : log.type === "error" ? "text-red-400" : "text-zinc-400"}>
+                            {log.type === "ok" ? "✓ " : log.type === "error" ? "✗ " : "› "}{log.msg}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {step === "generating" && (
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="text-zinc-700 flex-shrink-0">       </span>
+                        <span className="w-1.5 h-3 bg-zinc-500 animate-pulse rounded-sm" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

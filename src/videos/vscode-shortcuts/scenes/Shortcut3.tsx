@@ -100,7 +100,6 @@ export const Shortcut3: React.FC<{ duration: number }> = ({ duration }) => {
                     style={{
                       color: highlightCount > i ? "#1e1e1e" : "#9cdcfe",
                       background: highlightCount > i ? `${ACCENT}cc` : "transparent",
-                      transition: "all 0.15s",
                     }}
                   >
                     {WORD}
