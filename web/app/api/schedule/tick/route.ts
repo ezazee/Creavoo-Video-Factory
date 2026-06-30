@@ -130,6 +130,7 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
 
   // Waktu WIB = UTC+7 (dipakai baik di time-check maupun force mode)
   const nowTs = new Date();
+  const currentYear = nowTs.getFullYear();
   const wibHour = (nowTs.getUTCHours() + 7) % 24;
   const wibDay = new Date(nowTs.getTime() + 7 * 3600 * 1000).getUTCDay();
   const dayConfig = getDayConfig(settings, wibDay);
@@ -165,17 +166,17 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
 
   const ZAPORTFOLIO_TOPICS: Record<string, string[]> = {
     "it-developer": [
-      "Tech Stack Terpopuler untuk Web Developer 2026", "Perbedaan Frontend vs Backend vs Fullstack Developer",
+      `Tech Stack Terpopuler untuk Web Developer ${currentYear}`, "Perbedaan Frontend vs Backend vs Fullstack Developer",
       "Framework JavaScript yang Wajib Dipelajari Tahun Ini", "Kenapa TypeScript Lebih Baik dari JavaScript Biasa",
       "Cara Kerja REST API yang Wajib Dipahami Developer", "Docker untuk Developer: Kenapa Harus Pakai Container",
       "Git Workflow yang Dipakai Tim Developer Profesional", "Perbedaan SQL vs NoSQL: Kapan Pakai yang Mana",
       "Roadmap Belajar Web Developer dari Nol", "Tools VS Code yang Wajib Di-install Developer",
-      "Kenapa Next.js Jadi Pilihan Utama Web Developer", "Deploy Aplikasi ke Cloud: Pilihan Terbaik 2026",
+      "Kenapa Next.js Jadi Pilihan Utama Web Developer", `Deploy Aplikasi ke Cloud: Pilihan Terbaik ${currentYear}`,
       "Clean Code: Prinsip yang Bikin Kode Kamu Mudah Dibaca", "Testing di Software: Unit Test vs Integration Test",
       "Microservices vs Monolith: Pilih yang Mana",
     ],
     "ai": [
-      "5 Tools AI Gratis yang Wajib Dicoba di 2026", "Cara Pakai AI untuk Produktivitas Kerja Sehari-hari",
+      `Lima Alat AI Gratis yang Wajib Dicoba di ${currentYear}`, "Cara Pakai AI untuk Produktivitas Kerja Sehari-hari",
       "Perbedaan ChatGPT vs Claude vs Gemini: Mana yang Terbaik", "AI untuk Developer: Tools yang Bikin Coding Lebih Cepat",
       "Prompt Engineering: Cara Dapetin Hasil Terbaik dari AI", "AI yang Bisa Generate Gambar: Perbandingan Terbaik",
       "Cara Bikin Aplikasi Pakai AI tanpa Coding", "Machine Learning vs Deep Learning: Apa Bedanya",
@@ -185,7 +186,7 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
       "Etika Penggunaan AI yang Perlu Kamu Tahu",
     ],
     "design": [
-      "Prinsip UI/UX yang Bikin Aplikasi Enak Dipakai", "Tren Design UI 2026 yang Perlu Kamu Tahu",
+      "Prinsip UI/UX yang Bikin Aplikasi Enak Dipakai", `Tren Design UI ${currentYear} yang Perlu Kamu Tahu`,
       "Perbedaan UI Designer vs UX Designer vs Product Designer", "Color Theory untuk Designer: Dasar yang Sering Diabaikan",
       "Typography Rules yang Bikin Design Terlihat Profesional", "Cara Bikin Design System yang Scalable",
       "Figma Tips yang Bikin Workflow Design Lebih Cepat", "Design Vector: Kapan Pakai Illustrator vs Figma",
@@ -224,7 +225,7 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
     if (isZaportfolio) {
       pool = ZAPORTFOLIO_TOPICS[contentTheme] ?? ZAPORTFOLIO_TOPICS["it-developer"];
     } else if (dayConfig.useKnowledge) {
-      pool = trendTopics.slice(0, 6).length > 0 ? trendTopics.slice(0, 6) : ["Tips viral sosmed 2026"];
+      pool = trendTopics.slice(0, 6).length > 0 ? trendTopics.slice(0, 6) : [`Tips viral sosmed ${currentYear}`];
     } else {
       pool = trendTopics.length > 0 ? [...trendTopics.slice(0, 3), ...KNOWLEDGE_OFF_TOPICS] : KNOWLEDGE_OFF_TOPICS;
     }

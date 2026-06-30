@@ -20,12 +20,14 @@ function loadCreavooKnowledge(): string {
   }
 }
 
-const THEME_QUERIES: Record<string, string> = {
-  "it-developer": "trending programming web development tech stack 2026",
-  "ai":           "trending AI tools artificial intelligence use cases 2026",
-  "design":       "trending UI UX design tools figma 2026",
-  "tips-trick":   "trending IT productivity tips developer tricks 2026",
-};
+function getThemeQueries(year: number): Record<string, string> {
+  return {
+    "it-developer": `trending programming web development tech stack ${year}`,
+    "ai":           `trending AI tools artificial intelligence use cases ${year}`,
+    "design":       `trending UI UX design tools figma ${year}`,
+    "tips-trick":   `trending IT productivity tips developer tricks ${year}`,
+  };
+}
 
 const THEME_LABELS: Record<string, string> = {
   "it-developer": "IT Developer (web dev, coding, tech stack)",
@@ -63,13 +65,15 @@ export async function GET(req: NextRequest) {
   const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
   const contentTheme = req.nextUrl.searchParams.get("contentTheme") ?? "it-developer";
   const isZaportfolio = profile === "zaportfolio";
+  const currentYear = new Date().getFullYear();
+  const THEME_QUERIES = getThemeQueries(currentYear);
 
   const [searchResults, knowledge] = await Promise.all([
     isZaportfolio
       ? tavilySearch(THEME_QUERIES[contentTheme] ?? THEME_QUERIES["it-developer"])
       : Promise.all([
-          tavilySearch("trending social media content creator tips Indonesia 2026"),
-          tavilySearch("viral konten TikTok Instagram creator growth 2026"),
+          tavilySearch(`trending social media content creator tips Indonesia ${currentYear}`),
+          tavilySearch(`viral konten TikTok Instagram creator growth ${currentYear}`),
         ]).then(([r1, r2]) => [...r1, ...r2]),
     isZaportfolio ? Promise.resolve("") : Promise.resolve(loadCreavooKnowledge()),
   ]);
@@ -83,7 +87,7 @@ export async function GET(req: NextRequest) {
     : "Platform: Creavoo — social media growth & content creation untuk creator Indonesia";
 
   const searchContext = searchResults.length > 0
-    ? `\nHasil pencarian terbaru dari internet (2026):\n${searchResults.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
+    ? `\nHasil pencarian terbaru dari internet (${currentYear}):\n${searchResults.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
     : "";
 
   const completion = await client.chat.completions.create({
@@ -94,9 +98,11 @@ export async function GET(req: NextRequest) {
         content: `Kamu adalah content strategist untuk video pendek (Reels/Shorts).${knowledgeContext}
 ${themeLabel}
 
+Tahun sekarang adalah ${currentYear}.
+
 Tugasmu: suggest 6 ide topik konten video pendek yang:
 1. Relevan dengan tema di atas
-2. Berdasarkan tren aktual 2026 dari hasil pencarian internet
+2. Berdasarkan tren aktual ${currentYear} dari hasil pencarian internet
 3. Format cocok untuk "5 tips / explained / hidden gems / mistakes / tutorial / beginner vs pro"
 4. Audiens: developer/kreator Indonesia
 
@@ -106,12 +112,13 @@ PENTING — WAJIB FULL BAHASA INDONESIA:
 - Contoh yang SALAH: "5 AI tools gratis yang wajib dicoba" — mengandung kata Inggris
 - Contoh yang BENAR: "Lima alat AI gratis yang wajib dicoba developer"
 - Nama brand/produk boleh tetap (TikTok, Instagram, GitHub, dll)
+- Jika menyebut tahun, gunakan ${currentYear}
 
 Format output: JSON array of strings, masing-masing topik maksimal 65 karakter. Hanya JSON, tanpa markdown.`,
       },
       {
         role: "user",
-        content: `${searchContext}\n\nBuat 6 ide topik video pendek yang relevan dan trending di 2026. INGAT: semua topik HARUS full bahasa Indonesia, tidak boleh ada kata bahasa Inggris selain nama brand/produk.`,
+        content: `${searchContext}\n\nBuat 6 ide topik video pendek yang relevan dan trending di ${currentYear}. INGAT: semua topik HARUS full bahasa Indonesia, tidak boleh ada kata bahasa Inggris selain nama brand/produk.`,
       },
     ],
     temperature: 0.9,
@@ -133,19 +140,19 @@ Format output: JSON array of strings, masing-masing topik maksimal 65 karakter. 
 
   if (topics.length === 0) {
     topics = isZaportfolio ? [
-      "Lima alat kecerdasan buatan gratis wajib dicoba developer",
+      `Lima alat kecerdasan buatan gratis wajib dicoba developer ${currentYear}`,
       "Cara belajar pemrograman lebih cepat dengan bantuan AI",
       "Tumpukan teknologi terbaik untuk pengembang web tahun ini",
       "Lima tips desain antarmuka yang bikin aplikasimu terlihat profesional",
       "Kesalahan desainer pemula saat bikin halaman arahan",
       "Cara pakai GitHub Copilot supaya produktivitas coding naik tiga kali",
     ] : [
-      "5 alasan akun TikTok kamu stuck dan cara fixnya",
-      "Cara audit akun Instagram sendiri dalam 5 menit",
-      "Kesalahan creator pemula yang bikin konten ga viral",
-      "Tips posting di waktu yang tepat agar reach meledak",
-      "Cara clone konten viral tanpa nyontek",
-      "5 tanda akun sosmedmu butuh strategi baru",
+      "Lima alasan akun TikTok kamu stuck dan cara fixnya",
+      "Cara audit akun Instagram sendiri dalam lima menit",
+      "Kesalahan kreator pemula yang bikin konten ga viral",
+      "Tips posting di waktu yang tepat agar jangkauan meledak",
+      "Cara duplikasi konten viral tanpa meniru",
+      "Lima tanda akun sosialmu butuh strategi baru",
     ];
   }
 
