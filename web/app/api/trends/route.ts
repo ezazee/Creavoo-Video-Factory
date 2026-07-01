@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
 
 const client = new OpenAI({
   baseURL: process.env.AI_BASE_URL,
@@ -14,7 +16,7 @@ const THEME_QUERIES: Record<string, string> = {
   "ai":           "trending AI tools productivity developer Indonesia 2026",
   "design":       "trending UI UX design Figma tips Indonesia 2026",
   "tips-trick":   "trending developer productivity shortcuts tools Indonesia 2026",
-  "creavoo":      "trending konten kreator TikTok Instagram growth Indonesia 2026",
+  "creavoo":      "trending tips viral TikTok Instagram Reels content creator strategy Indonesia 2026",
 };
 
 const FALLBACK_TOPICS: Record<string, string[]> = {
@@ -88,8 +90,22 @@ export async function GET(req: NextRequest) {
   const searchContext = await tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"]);
 
   const trendContext = searchContext
-    ? `Tren terbaru: ${searchContext.slice(0, 400)}\n\n`
+    ? `Tren terbaru dari internet: ${searchContext.slice(0, 400)}\n\n`
     : "";
+
+  let brandContext: string;
+  if (isZaportfolio) {
+    brandContext = "Akun developer Indonesia (tips coding, karir IT, tools developer).";
+  } else {
+    try {
+      const knowledgePath = path.join(process.cwd(), "knowledge", "creavoo-knowledge.md");
+      const raw = fs.readFileSync(knowledgePath, "utf-8");
+      // Ambil 80 baris pertama — cukup untuk konteks brand tanpa bikin prompt besar
+      brandContext = raw.split("\n").slice(0, 80).join("\n");
+    } catch {
+      brandContext = "Akun Creavoo — bantu kreator Indonesia tumbuh di TikTok & Instagram (strategi konten, algoritma, engagement, caption, hashtag, jadwal posting).";
+    }
+  }
 
   try {
     const completion = await client.chat.completions.create({
@@ -97,7 +113,7 @@ export async function GET(req: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `${trendContext}Buat 6 ide topik video pendek tahun ${currentYear} tentang ${themeKey.replace("-", " ")} untuk audiens Indonesia. Balas HANYA JSON array 6 string bahasa Indonesia, max 60 karakter per topik. Contoh: ["topik 1","topik 2"]`,
+          content: `${trendContext}Konteks: ${brandContext}\n\nBuat 6 ide topik video pendek tahun ${currentYear} yang relevan dengan konteks di atas. Balas HANYA JSON array 6 string bahasa Indonesia, max 60 karakter per topik. Contoh: ["topik 1","topik 2"]`,
         },
       ],
       temperature: 0.9,
