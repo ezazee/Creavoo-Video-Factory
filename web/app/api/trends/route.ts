@@ -1,50 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
-const TAVILY_KEY = process.env.TAVILY_API_KEY ?? "";
-
-function getThemeQueries(year: number): Record<string, string> {
-  return {
-    "it-developer": `trending programming web development tech stack ${year}`,
-    "ai":           `trending AI tools artificial intelligence use cases ${year}`,
-    "design":       `trending UI UX design tools figma ${year}`,
-    "tips-trick":   `trending IT productivity tips developer tricks ${year}`,
-  };
-}
-
-
-async function tavilySearch(query: string): Promise<string[]> {
-  try {
-    const res = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: TAVILY_KEY,
-        query,
-        search_depth: "basic",
-        max_results: 8,
-        include_answer: false,
-      }),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const results: { title: string; content?: string }[] = data.results ?? [];
-    return results
-      .slice(0, 8)
-      .map((r) => r.title + (r.content ? ` — ${r.content.slice(0, 80)}` : ""))
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
+const client = new OpenAI({
+  baseURL: process.env.AI_BASE_URL,
+  apiKey: process.env.AI_API_KEY,
+});
 
 const FALLBACK_TOPICS: Record<string, string[]> = {
   "zaportfolio": [
     "Lima alat AI gratis wajib dicoba developer tahun ini",
     "Cara belajar coding lebih cepat dengan bantuan AI",
-    "Tech stack terbaik untuk web developer tahun ini",
     "Lima tips UI yang bikin aplikasimu terlihat profesional",
     "Kesalahan developer pemula saat bikin landing page",
     "Cara pakai GitHub Copilot agar produktivitas naik",
+    "Tech stack terbaik untuk web developer tahun ini",
   ],
   "creavoo": [
     "Lima alasan akun TikTok kamu stuck dan cara fixnya",
@@ -56,21 +25,49 @@ const FALLBACK_TOPICS: Record<string, string[]> = {
   ],
 };
 
+const THEME_CONTEXT: Record<string, string> = {
+  "it-developer": "tips coding, web development, tools developer, karir IT",
+  "ai":           "AI tools, penggunaan AI untuk developer, produktivitas dengan AI",
+  "design":       "UI UX design, Figma, design system, visual branding",
+  "tips-trick":   "produktivitas IT, shortcut developer, workflow programming",
+};
+
 export async function GET(req: NextRequest) {
   const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
   const contentTheme = req.nextUrl.searchParams.get("contentTheme") ?? "it-developer";
   const isZaportfolio = profile === "zaportfolio";
   const currentYear = new Date().getFullYear();
-  const THEME_QUERIES = getThemeQueries(currentYear);
 
-  const searchResults = await (isZaportfolio
-    ? tavilySearch(THEME_QUERIES[contentTheme] ?? THEME_QUERIES["it-developer"])
-    : tavilySearch(`trending konten kreator TikTok Instagram Indonesia ${currentYear}`));
+  const context = isZaportfolio
+    ? `Niche: ${THEME_CONTEXT[contentTheme] ?? "tips developer Indonesia"}`
+    : "Niche: social media growth, konten kreator, TikTok & Instagram Indonesia";
 
-  // Use Tavily titles directly as topic suggestions, fallback to hardcoded
-  const topics = searchResults.length >= 3
-    ? searchResults.slice(0, 6).map(t => t.split(" — ")[0].slice(0, 65))
-    : (FALLBACK_TOPICS[profile] ?? FALLBACK_TOPICS["creavoo"]);
+  try {
+    const completion = await client.chat.completions.create({
+      model: process.env.AI_MODEL ?? "creavoo-combo",
+      messages: [
+        {
+          role: "system",
+          content: `Kamu content strategist video pendek. ${context}. Tahun: ${currentYear}. Balas HANYA JSON array 6 string, masing-masing ide topik video max 60 karakter, bahasa Indonesia.`,
+        },
+        {
+          role: "user",
+          content: `Beri 6 ide topik video pendek yang relevan dan menarik untuk ${currentYear}. Hanya JSON array, tanpa penjelasan.`,
+        },
+      ],
+      temperature: 0.9,
+      max_tokens: 300,
+    });
 
-  return NextResponse.json({ topics: topics.slice(0, 6), searchResults: searchResults.slice(0, 5) });
+    const raw = completion.choices[0].message.content ?? "[]";
+    const clean = raw.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+    const parsed = JSON.parse(clean);
+    const topics: string[] = Array.isArray(parsed) ? parsed.filter((t) => typeof t === "string") : [];
+
+    if (topics.length >= 3) {
+      return NextResponse.json({ topics: topics.slice(0, 6) });
+    }
+  } catch { /* fallback */ }
+
+  return NextResponse.json({ topics: FALLBACK_TOPICS[profile] ?? FALLBACK_TOPICS["creavoo"] });
 }
