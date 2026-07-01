@@ -277,7 +277,7 @@ export async function POST(req: NextRequest) {
 
         for (let attempt = 0; attempt < 2; attempt++) {
           const aiStream = await client.chat.completions.create({
-            model: process.env.AI_MODEL ?? "creavoo-combo",
+            model: process.env.AI_MODEL ?? "groq/llama-3.3-70b-versatile",
             messages,
             temperature: attempt === 0 ? 0.85 : 0.6,
             max_tokens: 3500,
