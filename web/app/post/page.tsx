@@ -561,6 +561,24 @@ export default function PostPage() {
                 </div>
               )}
 
+              {/* Watermark handle */}
+              <div className="rounded-2xl border border-white/[0.07] px-5 py-3.5" style={{ background: "#111113" }}>
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2">Watermark Username</p>
+                <input
+                  type="text"
+                  value={watermarkHandle}
+                  onChange={e => {
+                    setWatermarkHandle(e.target.value);
+                    fetch(`/api/watermark?profile=${activeProfile}`, {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ handle: e.target.value, logoUrl: watermarkLogoUrl }),
+                    });
+                  }}
+                  placeholder={activeProfile === "zaportfolio" ? "@zaportfolio" : "@creavoo.id"}
+                  className="w-full bg-transparent text-sm text-zinc-200 placeholder-zinc-600 outline-none"
+                />
+              </div>
+
               {/* Generate */}
               <button onClick={generate}
                 disabled={!topic.trim() || step === "generating" || step === "rendering"}
