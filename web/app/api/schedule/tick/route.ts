@@ -16,7 +16,11 @@ async function callInternal(path: string, method = "GET", body?: unknown) {
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const res = await fetch(`${base}${path}`, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Lolos middleware auth untuk panggilan server-to-server internal
+      "x-internal-secret": process.env.SCHEDULE_WEBHOOK_SECRET ?? "",
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) throw new Error(`${path} → ${res.status}: ${await res.text()}`);
@@ -135,8 +139,8 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
   const wibDay = new Date(nowTs.getTime() + 7 * 3600 * 1000).getUTCDay();
   const dayConfig = getDayConfig(settings, wibDay);
 
-  const isVideoTime = dayConfig.times.includes(wibHour);
-  const isCarouselTime = (dayConfig.carouselTimes ?? []).includes(wibHour);
+  let isVideoTime = dayConfig.times.includes(wibHour);
+  let isCarouselTime = (dayConfig.carouselTimes ?? []).includes(wibHour);
 
   if (!force) {
     if (!settings.enabled) {
@@ -148,6 +152,26 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
     if (!isVideoTime && !isCarouselTime) {
       return { skipped: `not scheduled at hour ${wibHour} WIB`, log };
     }
+
+    // Guard anti-duplikat: tick bisa dipanggil berkali-kali dalam satu jam
+    // (cron-job.org + GitHub Actions tiap 15 menit). Kalau job dengan tipe yang
+    // sama sudah dibuat dalam 55 menit terakhir, jangan generate lagi.
+    const guardJobs = await loadRecentJobs(10, profile);
+    const recentCutoff = Date.now() - 55 * 60 * 1000;
+    const hasRecentVideo = guardJobs.some(j => j.mediaType === "video" && new Date(j.createdAt).getTime() > recentCutoff);
+    const hasRecentCarousel = guardJobs.some(j => j.mediaType === "carousel" && new Date(j.createdAt).getTime() > recentCutoff);
+    if (isVideoTime && hasRecentVideo) {
+      log.push("video sudah di-generate jam ini — skip (anti-duplikat)");
+      isVideoTime = false;
+    }
+    if (isCarouselTime && hasRecentCarousel) {
+      log.push("carousel sudah di-generate jam ini — skip (anti-duplikat)");
+      isCarouselTime = false;
+    }
+    if (!isVideoTime && !isCarouselTime) {
+      return { skipped: "sudah di-generate jam ini (anti-duplikat)", log };
+    }
+
     log.push(`triggered at ${wibHour}:00 WIB day=${wibDay} — video=${isVideoTime} carousel=${isCarouselTime}`);
   } else {
     log.push(`⚡ force mode — hari=${wibDay} jam=${wibHour}:00 WIB${dryrun ? " · DRY RUN" : ""}`);

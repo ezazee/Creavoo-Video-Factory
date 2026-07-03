@@ -13,7 +13,11 @@ async function publishInternal(body: Record<string, unknown>): Promise<{ postUrl
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const res = await fetch(`${base}/api/publish`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Lolos middleware auth untuk panggilan server-to-server internal
+      "x-internal-secret": process.env.SCHEDULE_WEBHOOK_SECRET ?? "",
+    },
     body: JSON.stringify(body),
   });
   const d = await res.json();
@@ -113,14 +117,22 @@ export async function POST(req: NextRequest) {
     );
   }
   if (updated.status === "posted") {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const platforms = [
+      updated.tiktokUrl ? "TikTok" : "",
+      updated.instagramUrl ? "Instagram" : "",
+    ].filter(Boolean).join(" & ");
     const links = [
-      updated.tiktokUrl && updated.tiktokUrl !== "posted" ? `🎵 ${updated.tiktokUrl}` : updated.tiktokUrl ? "🎵 TikTok ✓" : "",
-      updated.instagramUrl && updated.instagramUrl !== "posted" ? `📸 ${updated.instagramUrl}` : updated.instagramUrl ? "📸 Instagram ✓" : "",
+      updated.tiktokUrl && updated.tiktokUrl !== "posted" ? updated.tiktokUrl : "",
+      updated.instagramUrl && updated.instagramUrl !== "posted" ? updated.instagramUrl : "",
     ].filter(Boolean).join("\n");
     await sendTelegram(
-      `✅ <b>Berhasil diposting!</b>\n` +
-      `📌 <i>${job.videoTitle}</i>\n` +
-      `${typeLabel} · ${profileLabel}${links ? `\n${links}` : ""}`
+      `🔔 <b>Notif Post baru nih!</b>\n\n` +
+      `title : ${job.videoTitle}\n` +
+      `platform : ${platforms || typeLabel}\n` +
+      `akun : ${jobProfile}\n` +
+      `link : ${links || "-"}\n\n` +
+      (appUrl ? `ini dari web : ${appUrl}/results/${job.runId}` : "")
     );
   } else if (updated.status === "done" && !errors.length) {
     if (job.autoTikTok || job.autoInstagram) {

@@ -159,7 +159,23 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ items: filtered });
 }
 
-// Hapus item: file blob + job record + GitHub Actions run
+// Hapus GitHub Actions run (cancel dulu kalau masih jalan, lalu delete)
+async function deleteGithubRun(runId: number) {
+  const repo = process.env.GITHUB_REPO ?? "";
+  const headers = {
+    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+    Accept: "application/vnd.github+json",
+  };
+  await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}/cancel`, {
+    method: "POST", headers,
+  }).catch(() => {});
+  await new Promise(r => setTimeout(r, 1500));
+  await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}`, {
+    method: "DELETE", headers,
+  }).catch(() => {});
+}
+
+// Hapus item menyeluruh: file blob + job record + GitHub Actions run
 export async function DELETE(req: NextRequest) {
   const { runId } = await req.json();
   if (!runId) return NextResponse.json({ error: "runId required" }, { status: 400 });
@@ -178,6 +194,7 @@ export async function DELETE(req: NextRequest) {
   await Promise.allSettled([
     urls.length ? del(urls, { token: TOKEN }) : Promise.resolve(),
     ...jobPaths.map(p => del(p, { token: TOKEN }).catch(() => {})),
+    deleteGithubRun(Number(runId)),
   ]);
 
   return NextResponse.json({ ok: true, deleted: urls.length });

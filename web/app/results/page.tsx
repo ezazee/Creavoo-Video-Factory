@@ -49,6 +49,7 @@ export default function ResultsPage() {
   const [activeProfile, setActiveProfile] = useState("all");
   const [items, setItems] = useState<ResultItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async (profile: string, silent = false) => {
@@ -72,6 +73,19 @@ export default function ResultsPage() {
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [items, activeProfile, load]);
+
+  const deleteItem = async (e: React.MouseEvent, item: ResultItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Hapus "${item.title}"?\n\nIni menghapus permanen: file di Blob, history, dan GitHub Actions run.`)) return;
+    setDeleting(item.runId);
+    await fetch("/api/results", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId: item.runId }),
+    }).catch(() => {});
+    setItems(prev => prev.filter(i => i.runId !== item.runId));
+    setDeleting(null);
+  };
 
   const counts = {
     done: items.filter(i => i.status === "done" || i.status === "posted").length,
@@ -176,9 +190,14 @@ export default function ResultsPage() {
                       <p className="text-sm font-bold text-white leading-snug line-clamp-2">{item.title}</p>
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-[11px] text-zinc-600">{timeAgo(item.createdAt)}</p>
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-1.5">
                           {item.tiktokUrl && <span className="text-[10px]" title="TikTok terposting">🎵</span>}
                           {item.instagramUrl && <span className="text-[10px]" title="Instagram terposting">📸</span>}
+                          <button onClick={(e) => deleteItem(e, item)} disabled={deleting === item.runId}
+                            title="Hapus permanen (Blob + history + Actions run)"
+                            className="text-[11px] px-2 py-1 rounded-lg border border-white/[0.06] text-zinc-600 hover:text-red-400 hover:border-red-900/50 transition-colors disabled:opacity-50">
+                            {deleting === item.runId ? "…" : "🗑"}
+                          </button>
                         </div>
                       </div>
                     </div>
