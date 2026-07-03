@@ -170,14 +170,12 @@ export default function SettingsPage() {
                 </div>
               </Card>
 
-              <Card title="📤 Zernio (Auto-post TikTok & Instagram)" desc="API key per profile — dipakai publish manual, auto-upload, dan schedule">
-                <Field label="API Key — Creavoo" value={config.zernioKeyCreavoo} onChange={fieldSet("zernioKeyCreavoo")} placeholder="sk_…" secret />
-                <div className="flex items-center gap-3 -mt-1">
+              <Card title="📤 Zernio (Auto-post TikTok & Instagram)" desc="Diatur lewat Environment Variables Vercel (ZERNIO_API_KEY_CREAVOO, ZERNIO_API_KEY_ZAPORTFOLIO) — ubah di Vercel dashboard lalu redeploy">
+                <div className="flex items-center gap-3">
                   <button onClick={() => runTest("zernio", "creavoo")} className={btnTest}>Test akun Creavoo</button>
                   <TestBadge id="zernio-creavoo" />
                 </div>
-                <Field label="API Key — Zaportfolio" value={config.zernioKeyZaportfolio} onChange={fieldSet("zernioKeyZaportfolio")} placeholder="sk_…" secret />
-                <div className="flex items-center gap-3 -mt-1">
+                <div className="flex items-center gap-3">
                   <button onClick={() => runTest("zernio", "zaportfolio")} className={btnTest}>Test akun Zaportfolio</button>
                   <TestBadge id="zernio-zaportfolio" />
                 </div>

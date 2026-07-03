@@ -9,8 +9,11 @@ function mask(v: string): string {
 }
 
 const SECRET_FIELDS: (keyof AppConfig)[] = [
-  "aiApiKey", "zernioKeyCreavoo", "zernioKeyZaportfolio", "telegramBotToken", "tavilyApiKey",
+  "aiApiKey", "telegramBotToken", "tavilyApiKey",
 ];
+
+// Zernio dikelola lewat env var saja (bukan dari UI Settings)
+const READONLY_FIELDS: (keyof AppConfig)[] = ["zernioKeyCreavoo", "zernioKeyZaportfolio"];
 
 export async function GET() {
   const c = await loadConfig();
@@ -21,10 +24,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body: Partial<AppConfig> = await req.json();
-  // Field bernilai masked (mengandung …/•) atau kosong = tidak diubah user, jangan ditimpa
+  // Field bernilai masked (mengandung …/•), kosong, atau readonly = tidak diubah user, jangan ditimpa
   const clean: Partial<AppConfig> = {};
   for (const [k, v] of Object.entries(body)) {
     if (typeof v !== "string") continue;
+    if (READONLY_FIELDS.includes(k as keyof AppConfig)) continue;
     if (v.includes("…") || v.includes("•")) continue;
     clean[k as keyof AppConfig] = v;
   }

@@ -31,37 +31,8 @@ function envDefaults(): AppConfig {
   };
 }
 
-// ponytail: cache per-instance 30 detik — cukup untuk mengurangi Blob reads tanpa staleness berarti
-let cache: { config: AppConfig; at: number } | null = null;
-
-export async function loadConfig(): Promise<AppConfig> {
-  if (cache && Date.now() - cache.at < 30_000) return cache.config;
-  const defaults = envDefaults();
-  let config = defaults;
-  try {
-    const meta = await head(CONFIG_KEY, { token: TOKEN });
-    const res = await fetch(meta.url, { cache: "no-store" });
-    const saved: Partial<AppConfig> = await res.json();
-    // Field kosong di Blob → pakai env fallback
-    config = Object.fromEntries(
-      (Object.keys(defaults) as (keyof AppConfig)[]).map((k) => [k, saved[k] || defaults[k]])
-    ) as AppConfig;
-  } catch { /* belum ada config tersimpan */ }
-  cache = { config, at: Date.now() };
-  return config;
-}
-
-export async function saveConfig(partial: Partial<AppConfig>): Promise<AppConfig> {
-  const current = await loadConfigRaw();
-  const updated = { ...current, ...partial };
-  await put(CONFIG_KEY, JSON.stringify(updated), {
-    access: "public", token: TOKEN, addRandomSuffix: false,
-  });
-  cache = null;
-  return loadConfig();
-}
-
-// Nilai mentah yang tersimpan di Blob (tanpa env fallback) — untuk merge saat save
+// ponytail: tanpa cache — Vercel serverless jalan di banyak instance terpisah,
+// cache per-instance bikin GET setelah save bisa kena instance lama (kelihatan "gagal disimpan")
 async function loadConfigRaw(): Promise<Partial<AppConfig>> {
   try {
     const meta = await head(CONFIG_KEY, { token: TOKEN });
@@ -70,6 +41,23 @@ async function loadConfigRaw(): Promise<Partial<AppConfig>> {
   } catch {
     return {};
   }
+}
+
+export async function loadConfig(): Promise<AppConfig> {
+  const defaults = envDefaults();
+  const saved = await loadConfigRaw();
+  return Object.fromEntries(
+    (Object.keys(defaults) as (keyof AppConfig)[]).map((k) => [k, saved[k] || defaults[k]])
+  ) as AppConfig;
+}
+
+export async function saveConfig(partial: Partial<AppConfig>): Promise<AppConfig> {
+  const current = await loadConfigRaw();
+  const updated = { ...current, ...partial };
+  await put(CONFIG_KEY, JSON.stringify(updated), {
+    access: "public", token: TOKEN, addRandomSuffix: false,
+  });
+  return loadConfig();
 }
 
 export async function getZernioKey(profile: string): Promise<string> {
