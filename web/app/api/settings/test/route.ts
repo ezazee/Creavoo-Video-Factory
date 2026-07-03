@@ -3,10 +3,12 @@ import { loadConfig } from "@/lib/config";
 
 export const maxDuration = 30;
 
-// Test koneksi per layanan — dipanggil dari halaman Settings
+// Test koneksi per layanan — dipanggil dari halaman Settings.
+// `overrides` opsional: test pakai draft yang belum di-Simpan, tanpa tersimpan permanen.
 export async function POST(req: NextRequest) {
-  const { type, profile } = await req.json();
-  const c = await loadConfig();
+  const { type, profile, overrides } = await req.json();
+  const saved = await loadConfig();
+  const c = { ...saved, ...(overrides ?? {}) };
 
   try {
     if (type === "telegram") {

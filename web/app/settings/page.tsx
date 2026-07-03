@@ -19,6 +19,10 @@ const EMPTY: Config = {
 
 type TestState = { loading?: boolean; ok?: boolean; message?: string };
 
+function isMasked(v: string): boolean {
+  return v.includes("…") || v.includes("•");
+}
+
 // Di luar komponen halaman supaya tidak remount tiap ketikan (fokus input aman)
 function Field({ label, value, onChange, placeholder, secret }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; secret?: boolean;
@@ -30,6 +34,9 @@ function Field({ label, value, onChange, placeholder, secret }: {
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        // Klik field yang masih ter-mask → kosongkan dulu, biar paste/ketik tidak nyampur
+        // dengan sisa mask lama dan ketebak sebagai "belum diubah" saat disimpan
+        onFocus={() => { if (isMasked(value)) onChange(""); }}
         placeholder={placeholder}
         spellCheck={false}
         className="w-full px-3.5 py-2.5 rounded-xl text-sm text-zinc-200 placeholder-zinc-700 outline-none border border-white/[0.07] focus:border-[#00AEEF]/50 transition-colors"
@@ -79,9 +86,17 @@ export default function SettingsPage() {
     const key = profile ? `${type}-${profile}` : type;
     setTests(t => ({ ...t, [key]: { loading: true } }));
     try {
+      // Kirim field yang sedang diketik user (belum tentu sudah disimpan) sebagai override,
+      // supaya "Test" selalu mencerminkan apa yang ada di layar — bukan versi lama.
+      const overrides: Partial<Config> = {};
+      for (const [k, v] of Object.entries(config)) {
+        if (typeof v === "string" && v && !isMasked(v)) {
+          overrides[k as keyof Config] = v;
+        }
+      }
       const res = await fetch("/api/settings/test", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, profile }),
+        body: JSON.stringify({ type, profile, overrides }),
       });
       const d = await res.json();
       setTests(t => ({ ...t, [key]: { ok: d.ok, message: d.message } }));
