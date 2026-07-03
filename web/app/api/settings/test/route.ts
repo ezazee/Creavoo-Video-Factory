@@ -29,8 +29,12 @@ export async function POST(req: NextRequest) {
       });
       if (!res.ok) throw new Error(`Zernio ${res.status}: ${(await res.text()).slice(0, 120)}`);
       const d = await res.json();
-      const accounts: { platform?: string; username?: string }[] = Array.isArray(d) ? d : d?.data ?? [];
-      const list = accounts.map((a) => `${a.platform}${a.username ? ` (@${a.username})` : ""}`).join(", ");
+      const accounts: { platform?: string; username?: string; displayName?: string; metadata?: { profileData?: { username?: string } } }[] =
+        Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : Array.isArray(d?.accounts) ? d.accounts : [];
+      const list = accounts.map((a) => {
+        const uname = a.username ?? a.metadata?.profileData?.username ?? a.displayName;
+        return `${a.platform}${uname ? ` (@${uname})` : ""}`;
+      }).join(", ");
       return NextResponse.json({ ok: true, message: `${accounts.length} akun terhubung${list ? `: ${list}` : ""}` });
     }
 
