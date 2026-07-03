@@ -27,6 +27,7 @@ function isMasked(v: string): boolean {
 function Field({ label, value, onChange, placeholder, secret }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; secret?: boolean;
 }) {
+  const masked = isMasked(value);
   return (
     <div>
       <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">{label}</p>
@@ -34,9 +35,10 @@ function Field({ label, value, onChange, placeholder, secret }: {
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        // Klik field yang masih ter-mask → kosongkan dulu, biar paste/ketik tidak nyampur
-        // dengan sisa mask lama dan ketebak sebagai "belum diubah" saat disimpan
-        onFocus={() => { if (isMasked(value)) onChange(""); }}
+        // Field masih tampil mask lama → klik langsung select-all, jadi mengetik atau
+        // paste otomatis menggantikan seluruhnya (tidak bisa nyampur sisa mask).
+        // Kalau user cuma klik lihat lalu klik keluar tanpa ngetik, value tidak berubah.
+        onFocus={(e) => { if (masked) e.target.select(); }}
         placeholder={placeholder}
         spellCheck={false}
         className="w-full px-3.5 py-2.5 rounded-xl text-sm text-zinc-200 placeholder-zinc-700 outline-none border border-white/[0.07] focus:border-[#00AEEF]/50 transition-colors"
