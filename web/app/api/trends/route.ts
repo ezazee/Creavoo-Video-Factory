@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
 
   const config = await loadConfig();
   const [searchContext, memory] = await Promise.all([
-    tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"], config.tavilyApiKey),
+    tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"], process.env.TAVILY_API_KEY ?? ""),
     readMemory(),
   ]);
 

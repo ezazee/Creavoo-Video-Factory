@@ -18,7 +18,7 @@ async function getAccounts(token: string): Promise<Account[]> {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { profile } = body;
-  const token = await getZernioKey(profile ?? "creavoo");
+  const token = getZernioKey(profile ?? "creavoo");
   if (!token) return NextResponse.json({ error: "API key Zernio belum di-set untuk profile ini (cek Settings)" }, { status: 500 });
 
   const {

@@ -3,19 +3,8 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 
-type Config = {
-  aiModel: string; aiBaseUrl: string; aiApiKey: string;
-  zernioKeyCreavoo: string; zernioKeyZaportfolio: string;
-  telegramBotToken: string; telegramChatId: string;
-  tavilyApiKey: string; defaultVoice: string;
-};
-
-const EMPTY: Config = {
-  aiModel: "", aiBaseUrl: "", aiApiKey: "",
-  zernioKeyCreavoo: "", zernioKeyZaportfolio: "",
-  telegramBotToken: "", telegramChatId: "",
-  tavilyApiKey: "", defaultVoice: "",
-};
+type Config = { aiModel: string; aiBaseUrl: string; aiApiKey: string };
+const EMPTY: Config = { aiModel: "", aiBaseUrl: "", aiApiKey: "" };
 
 type TestState = { loading?: boolean; ok?: boolean; message?: string };
 
@@ -37,7 +26,6 @@ function Field({ label, value, onChange, placeholder, secret }: {
         onChange={(e) => onChange(e.target.value)}
         // Field masih tampil mask lama → klik langsung select-all, jadi mengetik atau
         // paste otomatis menggantikan seluruhnya (tidak bisa nyampur sisa mask).
-        // Kalau user cuma klik lihat lalu klik keluar tanpa ngetik, value tidak berubah.
         onFocus={(e) => { if (masked) e.target.select(); }}
         placeholder={placeholder}
         spellCheck={false}
@@ -48,22 +36,12 @@ function Field({ label, value, onChange, placeholder, secret }: {
   );
 }
 
-function Card({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.07] p-6" style={{ background: "#111113" }}>
-      <p className="text-sm font-bold text-white">{title}</p>
-      <p className="text-xs text-zinc-600 mt-0.5 mb-5">{desc}</p>
-      <div className="flex flex-col gap-4">{children}</div>
-    </div>
-  );
-}
-
 export default function SettingsPage() {
   const [config, setConfig] = useState<Config>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [tests, setTests] = useState<Record<string, TestState>>({});
+  const [test, setTest] = useState<TestState>({});
   const [models, setModels] = useState<string[]>([]);
   const [showModels, setShowModels] = useState(false);
 
@@ -71,65 +49,58 @@ export default function SettingsPage() {
     fetch("/api/settings").then(r => r.json()).then(d => { setConfig(d); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
+  const fieldSet = (k: keyof Config) => (v: string) => setConfig(c => ({ ...c, [k]: v }));
+
   const save = async () => {
     setSaving(true); setSaved(false);
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
     });
-    // Reload untuk dapat nilai masked terbaru
+    if (!res.ok) {
+      setSaving(false);
+      setTest({ ok: false, message: `Gagal menyimpan: ${res.status}` });
+      return;
+    }
+    // Reload untuk dapat nilai masked terbaru dari server
     const d = await fetch("/api/settings").then(r => r.json());
     setConfig(d);
     setSaving(false); setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const runTest = async (type: string, profile?: string) => {
-    const key = profile ? `${type}-${profile}` : type;
-    setTests(t => ({ ...t, [key]: { loading: true } }));
+  const runTest = async () => {
+    setTest({ loading: true });
     try {
       // Kirim field yang sedang diketik user (belum tentu sudah disimpan) sebagai override,
       // supaya "Test" selalu mencerminkan apa yang ada di layar — bukan versi lama.
       const overrides: Partial<Config> = {};
       for (const [k, v] of Object.entries(config)) {
-        if (typeof v === "string" && v && !isMasked(v)) {
-          overrides[k as keyof Config] = v;
-        }
+        if (typeof v === "string" && v && !isMasked(v)) overrides[k as keyof Config] = v;
       }
       const res = await fetch("/api/settings/test", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, profile, overrides }),
+        body: JSON.stringify({ type: "ai", overrides }),
       });
       const d = await res.json();
-      setTests(t => ({ ...t, [key]: { ok: d.ok, message: d.message } }));
+      setTest({ ok: d.ok, message: d.message });
     } catch (e) {
-      setTests(t => ({ ...t, [key]: { ok: false, message: String(e) } }));
+      setTest({ ok: false, message: String(e) });
     }
   };
 
   const loadModels = async () => {
     setShowModels(true);
     if (models.length) return;
+    const overrides = { aiBaseUrl: config.aiBaseUrl, aiApiKey: config.aiApiKey };
     const res = await fetch("/api/settings/test", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "ai-models" }),
+      body: JSON.stringify({ type: "ai-models", overrides }),
     });
     const d = await res.json();
     if (d.ok) setModels(d.models ?? []);
+    else setTest({ ok: false, message: d.message });
   };
-
-  const TestBadge = ({ id }: { id: string }) => {
-    const t = tests[id];
-    if (!t) return null;
-    if (t.loading) return <span className="text-[11px] text-zinc-500">⏳ testing…</span>;
-    return (
-      <span className={`text-[11px] ${t.ok ? "text-green-400" : "text-red-400"}`}>
-        {t.ok ? "✓" : "✗"} {t.message}
-      </span>
-    );
-  };
-
-  const fieldSet = (k: keyof Config) => (v: string) => setConfig(c => ({ ...c, [k]: v }));
 
   const btnTest = "px-3.5 py-2 rounded-xl text-xs font-semibold border border-white/[0.1] text-zinc-300 hover:border-[#00AEEF]/50 hover:text-white transition-colors";
 
@@ -141,7 +112,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-black">Settings</h1>
-              <p className="text-zinc-500 text-sm mt-1">Semua konfigurasi tersimpan di cloud — berubah langsung tanpa redeploy</p>
+              <p className="text-zinc-500 text-sm mt-1">Model AI tersimpan di cloud — berubah langsung tanpa redeploy</p>
             </div>
             <button onClick={save} disabled={saving || loading}
               className="px-6 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-40 transition-all"
@@ -154,67 +125,53 @@ export default function SettingsPage() {
             <p className="text-zinc-600 text-sm">Memuat konfigurasi…</p>
           ) : (
             <div className="flex flex-col gap-5">
+              <div className="rounded-2xl border border-white/[0.07] p-6" style={{ background: "#111113" }}>
+                <p className="text-sm font-bold text-white">🤖 AI Model</p>
+                <p className="text-xs text-zinc-600 mt-0.5 mb-5">Model & endpoint untuk generate script dan trending topik</p>
 
-              <Card title="🤖 AI Model" desc="Model & endpoint untuk generate script dan trending topik">
-                <Field label="Base URL" value={config.aiBaseUrl} onChange={fieldSet("aiBaseUrl")} placeholder="https://creavoo-9router.fly.dev/v1" />
-                <Field label="API Key" value={config.aiApiKey} onChange={fieldSet("aiApiKey")} placeholder="sk-…" secret />
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Model</p>
-                    <button onClick={loadModels} className="text-[11px] text-[#38bdf8] hover:underline">Lihat model tersedia</button>
-                  </div>
-                  <input type="text" value={config.aiModel} onChange={(e) => fieldSet("aiModel")(e.target.value)}
-                    placeholder="cerebras/gpt-oss-120b" spellCheck={false}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-sm text-zinc-200 placeholder-zinc-700 outline-none border border-white/[0.07] focus:border-[#00AEEF]/50 transition-colors font-mono"
-                    style={{ background: "#0a0a0a" }} />
-                  {showModels && (
-                    <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border border-white/[0.07] p-2 flex flex-wrap gap-1.5" style={{ background: "#0a0a0a" }}>
-                      {models.length === 0 ? <p className="text-xs text-zinc-600 p-1">Memuat…</p> : models.map(m => (
-                        <button key={m} onClick={() => setConfig(c => ({ ...c, aiModel: m }))}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-colors"
-                          style={{
-                            borderColor: config.aiModel === m ? "#00AEEF" : "#ffffff10",
-                            color: config.aiModel === m ? "#38bdf8" : "#a1a1aa",
-                            background: config.aiModel === m ? "#00AEEF15" : "transparent",
-                          }}>{m}</button>
-                      ))}
+                <div className="flex flex-col gap-4">
+                  <Field label="Base URL" value={config.aiBaseUrl} onChange={fieldSet("aiBaseUrl")} placeholder="https://creavoo-9router.fly.dev/v1" />
+                  <Field label="API Key" value={config.aiApiKey} onChange={fieldSet("aiApiKey")} placeholder="sk-…" secret />
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Model</p>
+                      <button onClick={loadModels} className="text-[11px] text-[#38bdf8] hover:underline">Lihat model tersedia</button>
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => runTest("ai")} className={btnTest}>Test AI</button>
-                  <TestBadge id="ai" />
-                </div>
-              </Card>
+                    <input type="text" value={config.aiModel} onChange={(e) => fieldSet("aiModel")(e.target.value)}
+                      placeholder="cerebras/gpt-oss-120b" spellCheck={false}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-sm text-zinc-200 placeholder-zinc-700 outline-none border border-white/[0.07] focus:border-[#00AEEF]/50 transition-colors font-mono"
+                      style={{ background: "#0a0a0a" }} />
+                    {showModels && (
+                      <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border border-white/[0.07] p-2 flex flex-wrap gap-1.5" style={{ background: "#0a0a0a" }}>
+                        {models.length === 0 ? <p className="text-xs text-zinc-600 p-1">Memuat…</p> : models.map(m => (
+                          <button key={m} onClick={() => setConfig(c => ({ ...c, aiModel: m }))}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-mono border transition-colors"
+                            style={{
+                              borderColor: config.aiModel === m ? "#00AEEF" : "#ffffff10",
+                              color: config.aiModel === m ? "#38bdf8" : "#a1a1aa",
+                              background: config.aiModel === m ? "#00AEEF15" : "transparent",
+                            }}>{m}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-              <Card title="📤 Zernio (Auto-post TikTok & Instagram)" desc="Diatur lewat Environment Variables Vercel (ZERNIO_API_KEY_CREAVOO, ZERNIO_API_KEY_ZAPORTFOLIO) — ubah di Vercel dashboard lalu redeploy">
-                <div className="flex items-center gap-3">
-                  <button onClick={() => runTest("zernio", "creavoo")} className={btnTest}>Test akun Creavoo</button>
-                  <TestBadge id="zernio-creavoo" />
+                  <div className="flex items-center gap-3">
+                    <button onClick={runTest} className={btnTest}>Test AI</button>
+                    {test.loading && <span className="text-[11px] text-zinc-500">⏳ testing…</span>}
+                    {!test.loading && test.message && (
+                      <span className={`text-[11px] ${test.ok ? "text-green-400" : "text-red-400"}`}>
+                        {test.ok ? "✓" : "✗"} {test.message}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => runTest("zernio", "zaportfolio")} className={btnTest}>Test akun Zaportfolio</button>
-                  <TestBadge id="zernio-zaportfolio" />
-                </div>
-              </Card>
-
-              <Card title="🔔 Telegram (Notifikasi)" desc="Notif render selesai, berhasil/gagal posting, dan error schedule">
-                <Field label="Bot Token" value={config.telegramBotToken} onChange={fieldSet("telegramBotToken")} placeholder="123456:ABC-…" secret />
-                <Field label="Chat ID" value={config.telegramChatId} onChange={fieldSet("telegramChatId")} placeholder="8145595315" />
-                <div className="flex items-center gap-3">
-                  <button onClick={() => runTest("telegram")} className={btnTest}>Kirim pesan test</button>
-                  <TestBadge id="telegram" />
-                </div>
-              </Card>
-
-              <Card title="🔎 Lainnya" desc="Tavily untuk riset trending topik, dan voice default TTS">
-                <Field label="Tavily API Key" value={config.tavilyApiKey} onChange={fieldSet("tavilyApiKey")} placeholder="tvly-…" secret />
-                <Field label="Voice Default" value={config.defaultVoice} onChange={fieldSet("defaultVoice")} placeholder="id-ID-ArdiNeural" />
-              </Card>
+              </div>
 
               <p className="text-[11px] text-zinc-700 leading-relaxed px-1">
-                💡 Field yang menampilkan nilai ter-mask (sk_08…a8dd) berarti sudah tersimpan — biarkan saja kalau tidak mau mengubah.
-                Ketik nilai baru untuk mengganti. Field kosong otomatis fallback ke environment variable Vercel.
+                💡 Field kosong otomatis fallback ke environment variable Vercel (AI_BASE_URL, AI_API_KEY, AI_MODEL).
+                Zernio, Telegram, dan Tavily diatur lewat Environment Variables di Vercel dashboard.
               </p>
             </div>
           )}

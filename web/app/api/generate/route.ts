@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { put } from "@vercel/blob";
 import { readMemory, isDuplicateTitle } from "../../../lib/memory";
-import { loadConfig } from "../../../lib/config";
+import { loadConfig, getZernioKey } from "../../../lib/config";
 
 function loadCreavooKnowledge(): string {
   try {
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
   const client = new OpenAI({ baseURL: config.aiBaseUrl, apiKey: config.aiApiKey });
 
   // Gunakan analytics key sesuai profile
-  const zernioKey = isZap ? config.zernioKeyZaportfolio : config.zernioKeyCreavoo;
+  const zernioKey = getZernioKey(profile);
 
   // Jalankan memory + analytics secara paralel
   const [previousTitles, analyticsHint] = await Promise.all([

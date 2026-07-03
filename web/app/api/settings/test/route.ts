@@ -3,43 +3,14 @@ import { loadConfig } from "@/lib/config";
 
 export const maxDuration = 30;
 
-// Test koneksi per layanan — dipanggil dari halaman Settings.
+// Test koneksi AI — dipanggil dari halaman Settings.
 // `overrides` opsional: test pakai draft yang belum di-Simpan, tanpa tersimpan permanen.
 export async function POST(req: NextRequest) {
-  const { type, profile, overrides } = await req.json();
+  const { type, overrides } = await req.json();
   const saved = await loadConfig();
   const c = { ...saved, ...(overrides ?? {}) };
 
   try {
-    if (type === "telegram") {
-      if (!c.telegramBotToken || !c.telegramChatId) throw new Error("Bot token / chat ID belum diisi");
-      const res = await fetch(`https://api.telegram.org/bot${c.telegramBotToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: c.telegramChatId, text: "✅ Test notifikasi dari Video Factory — koneksi OK!" }),
-      });
-      const d = await res.json();
-      if (!d.ok) throw new Error(d.description ?? "Telegram API error");
-      return NextResponse.json({ ok: true, message: "Pesan test terkirim ke Telegram" });
-    }
-
-    if (type === "zernio") {
-      const key = profile === "zaportfolio" ? c.zernioKeyZaportfolio : c.zernioKeyCreavoo;
-      if (!key) throw new Error("API key Zernio belum diisi");
-      const res = await fetch("https://zernio.com/api/v1/accounts", {
-        headers: { Authorization: `Bearer ${key}` }, cache: "no-store",
-      });
-      if (!res.ok) throw new Error(`Zernio ${res.status}: ${(await res.text()).slice(0, 120)}`);
-      const d = await res.json();
-      const accounts: { platform?: string; username?: string; displayName?: string; metadata?: { profileData?: { username?: string } } }[] =
-        Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : Array.isArray(d?.accounts) ? d.accounts : [];
-      const list = accounts.map((a) => {
-        const uname = a.username ?? a.metadata?.profileData?.username ?? a.displayName;
-        return `${a.platform}${uname ? ` (@${uname})` : ""}`;
-      }).join(", ");
-      return NextResponse.json({ ok: true, message: `${accounts.length} akun terhubung${list ? `: ${list}` : ""}` });
-    }
-
     if (type === "ai") {
       if (!c.aiBaseUrl || !c.aiApiKey) throw new Error("AI base URL / API key belum diisi");
       const res = await fetch(`${c.aiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
@@ -53,6 +24,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (type === "ai-models") {
+      if (!c.aiBaseUrl || !c.aiApiKey) throw new Error("AI base URL / API key belum diisi");
       const res = await fetch(`${c.aiBaseUrl.replace(/\/$/, "")}/models`, {
         headers: { Authorization: `Bearer ${c.aiApiKey}` }, cache: "no-store",
       });

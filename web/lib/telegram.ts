@@ -1,7 +1,6 @@
-import { loadConfig } from "./config";
-
 export async function sendTelegram(message: string) {
-  const { telegramBotToken: token, telegramChatId: chatId } = await loadConfig();
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",

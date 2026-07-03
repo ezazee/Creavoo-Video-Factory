@@ -7,8 +7,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const profile = searchParams.get("profile") ?? "creavoo";
   const token = profile === "zaportfolio"
-    ? await getZernioKey("zaportfolio")
-    : await getZernioKey("creavoo");
+    ? getZernioKey("zaportfolio")
+    : getZernioKey("creavoo");
   if (!token) return NextResponse.json({ error: "API key Zernio belum di-set (cek Settings)" }, { status: 500 });
 
   const days = parseInt(searchParams.get("days") ?? "30");

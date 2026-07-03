@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadConfig, saveConfig, type AppConfig } from "@/lib/config";
+import { loadConfig, saveConfig, type AiConfig } from "@/lib/config";
 
 // Mask nilai sensitif untuk ditampilkan di UI: "sk_08...a8dd"
 function mask(v: string): string {
@@ -8,29 +8,19 @@ function mask(v: string): string {
   return `${v.slice(0, 5)}…${v.slice(-4)}`;
 }
 
-const SECRET_FIELDS: (keyof AppConfig)[] = [
-  "aiApiKey", "telegramBotToken", "tavilyApiKey",
-];
-
-// Zernio dikelola lewat env var saja (bukan dari UI Settings)
-const READONLY_FIELDS: (keyof AppConfig)[] = ["zernioKeyCreavoo", "zernioKeyZaportfolio"];
-
 export async function GET() {
   const c = await loadConfig();
-  const masked = { ...c };
-  for (const f of SECRET_FIELDS) masked[f] = mask(c[f]);
-  return NextResponse.json(masked);
+  return NextResponse.json({ ...c, aiApiKey: mask(c.aiApiKey) });
 }
 
 export async function POST(req: NextRequest) {
-  const body: Partial<AppConfig> = await req.json();
-  // Field bernilai masked (mengandung …/•), kosong, atau readonly = tidak diubah user, jangan ditimpa
-  const clean: Partial<AppConfig> = {};
+  const body: Partial<AiConfig> = await req.json();
+  // Field bernilai masked (mengandung …/•) atau kosong = tidak diubah user, jangan ditimpa
+  const clean: Partial<AiConfig> = {};
   for (const [k, v] of Object.entries(body)) {
-    if (typeof v !== "string") continue;
-    if (READONLY_FIELDS.includes(k as keyof AppConfig)) continue;
+    if (typeof v !== "string" || !v) continue;
     if (v.includes("…") || v.includes("•")) continue;
-    clean[k as keyof AppConfig] = v;
+    clean[k as keyof AiConfig] = v;
   }
   await saveConfig(clean);
   return NextResponse.json({ ok: true });
