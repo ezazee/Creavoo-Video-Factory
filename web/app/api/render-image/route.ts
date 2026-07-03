@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
-    videoTitle, subtitle, introEmoji, accent, tips, ctaText,
+    videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout,
     watermarkHandle, watermarkLogoUrl,
     type = "single",  // "single" | "carousel"
     totalSlides = 7,
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
         inputs: {
           props_json: JSON.stringify({
             videoTitle, subtitle, introEmoji, accent: resolvedAccent, tips, ctaText,
+            layout: layout ?? "auto",
             watermarkHandle: watermarkHandle ?? "",
             watermarkLogoUrl: watermarkLogoUrl ?? null,
           }),

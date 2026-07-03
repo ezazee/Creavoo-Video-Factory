@@ -63,6 +63,7 @@ export default function Home() {
   const [topic, setTopic] = useState("");
   const [useKnowledge, setUseKnowledge] = useState(true);
   const [voice, setVoice] = useState("id-ID-ArdiNeural");
+  const [layoutChoice, setLayoutChoice] = useState<"auto" | "center" | "side" | "bold">("auto");
   const [step, setStep] = useState<Step>("idle");
   const [preview, setPreview] = useState<SceneData | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -264,7 +265,7 @@ export default function Home() {
       addLog("Trigger GitHub Actions untuk render…");
       const renderRes = await fetch("/api/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, voice, watermarkHandle, watermarkLogoUrl: activeProfile === "zaportfolio" ? null : watermarkLogoUrl, profile: activeProfile }),
+        body: JSON.stringify({ ...data, layout: layoutChoice, voice, watermarkHandle, watermarkLogoUrl: activeProfile === "zaportfolio" ? null : watermarkLogoUrl, profile: activeProfile }),
       });
       if (!renderRes.ok) throw new Error(await renderRes.text());
       const { runId } = await renderRes.json();
@@ -517,6 +518,28 @@ export default function Home() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Layout */}
+              <div style={{ background: "#111113", border: "1px solid #ffffff10", borderRadius: 14, padding: "14px 16px", marginBottom: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#52525b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Layout Scene</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                  {([
+                    { id: "auto", label: "✨ Auto", desc: "Variatif per scene" },
+                    { id: "center", label: "Center", desc: "Konten tengah" },
+                    { id: "side", label: "Side", desc: "Teks kiri" },
+                    { id: "bold", label: "Bold", desc: "Angka besar" },
+                  ] as const).map((l) => {
+                    const active = layoutChoice === l.id;
+                    return (
+                      <button key={l.id} onClick={() => setLayoutChoice(l.id)}
+                        style={{ padding: "8px 10px", borderRadius: 10, border: `1px solid ${active ? "#00AEEF" : "transparent"}`, background: active ? "#00AEEF15" : "#ffffff07", cursor: "pointer", textAlign: "left" as const }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: active ? "#38bdf8" : "#a1a1aa" }}>{l.label}</p>
+                        <p style={{ fontSize: 10, color: "#52525b", marginTop: 2 }}>{l.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

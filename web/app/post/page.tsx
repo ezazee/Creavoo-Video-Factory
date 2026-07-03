@@ -240,6 +240,7 @@ export default function PostPage() {
   const [genLogs, setGenLogs] = useState<{ ts: number; msg: string; type: "info" | "ok" | "error" }[]>([]);
   const genLogsRef = useRef<typeof genLogs>([]);
   const postDataRef = useRef<PostData | null>(null);
+  const [layoutChoice, setLayoutChoice] = useState<"auto" | "center" | "side" | "bold">("auto");
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -404,7 +405,7 @@ export default function PostPage() {
     try {
       const res = await fetch("/api/render-image", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...postData, watermarkHandle, watermarkLogoUrl, type: "carousel", totalSlides, style: activeProfile }),
+        body: JSON.stringify({ ...postData, layout: layoutChoice, watermarkHandle, watermarkLogoUrl, type: "carousel", totalSlides, style: activeProfile }),
       });
       if (!res.ok) throw new Error(await res.text());
       const d = await res.json();
@@ -560,6 +561,32 @@ export default function PostPage() {
                   </div>
                 </div>
               )}
+
+              {/* Layout selector */}
+              <div className="rounded-2xl border border-white/[0.07] px-5 py-3.5" style={{ background: "#111113" }}>
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-2.5">Layout Slide</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {([
+                    { id: "auto", label: "✨ Auto", desc: "Variatif per slide" },
+                    { id: "center", label: "Center", desc: "Konten tengah" },
+                    { id: "side", label: "Side", desc: "Teks kiri + media" },
+                    { id: "bold", label: "Bold", desc: "Angka besar" },
+                  ] as const).map(l => {
+                    const active = layoutChoice === l.id;
+                    return (
+                      <button key={l.id} onClick={() => setLayoutChoice(l.id)}
+                        className="px-3 py-2.5 rounded-xl text-left transition-all border"
+                        style={{
+                          background: active ? "#00AEEF15" : "#ffffff07",
+                          borderColor: active ? "#00AEEF50" : "transparent",
+                        }}>
+                        <p className="text-xs font-bold" style={{ color: active ? "#38bdf8" : "#a1a1aa" }}>{l.label}</p>
+                        <p className="text-[10px] text-zinc-600 mt-0.5">{l.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* Watermark handle */}
               <div className="rounded-2xl border border-white/[0.07] px-5 py-3.5" style={{ background: "#111113" }}>

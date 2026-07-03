@@ -1,6 +1,7 @@
 import { AbsoluteFill, Img, staticFile } from "remotion";
 import { Background } from "../../shared/Background";
-import type { TipData } from "../generated/Composition";
+import { resolveTipLayout, type TipData, type VideoLayout } from "../generated/Composition";
+import type { VisualData } from "../generated/scenes/VisualBlock";
 
 export type InstagramPostProps = {
   videoTitle: string;
@@ -9,6 +10,7 @@ export type InstagramPostProps = {
   accent: string;
   tips: TipData[];
   ctaText: string;
+  layout?: VideoLayout;
   watermarkHandle?: string;
   watermarkLogo?: string;
   style?: string;
@@ -178,9 +180,122 @@ export const InstagramPostComposition: React.FC<InstagramPostProps> = ({
   );
 };
 
+// ── Icon brand asli (fallback emoji) — versi statis untuk stills ─────────────
+function SlideIcon({ emoji, iconFile, size, accent }: { emoji: string; iconFile?: string; size: number; accent: string }) {
+  if (iconFile) {
+    return (
+      <div style={{
+        width: size * 1.3, height: size * 1.3, borderRadius: size * 0.3,
+        background: "rgba(255,255,255,0.95)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: `0 8px 30px ${accent}44`,
+      }}>
+        <Img src={staticFile(iconFile)} style={{ width: size * 0.85, height: size * 0.85, objectFit: "contain" }} />
+      </div>
+    );
+  }
+  return <span style={{ fontSize: size, lineHeight: 1, filter: `drop-shadow(0 0 28px ${accent}66)` }}>{emoji}</span>;
+}
+
+// ── Screenshot dalam frame browser mock ──────────────────────────────────────
+function SlideScreenshot({ file, accent }: { file: string; accent: string }) {
+  return (
+    <div style={{
+      width: "100%", borderRadius: 20, overflow: "hidden",
+      border: `3px solid ${accent}44`,
+      boxShadow: `0 16px 50px rgba(0,0,0,0.22), 0 0 36px ${accent}33`,
+      background: "#fff",
+    }}>
+      <div style={{ height: 40, background: "#e4e4e7", display: "flex", alignItems: "center", gap: 10, padding: "0 18px" }}>
+        {["#ef4444", "#eab308", "#22c55e"].map((c) => (
+          <div key={c} style={{ width: 14, height: 14, borderRadius: "50%", background: c }} />
+        ))}
+      </div>
+      <Img src={staticFile(file)} style={{ width: "100%", display: "block" }} />
+    </div>
+  );
+}
+
+// ── Visual data statis (stat/checklist/comparison/quote/code/bullets) ────────
+function StaticVisual({ visual, accent }: { visual: VisualData; accent: string }) {
+  const card: React.CSSProperties = {
+    background: "rgba(255,255,255,0.72)", border: `2px solid ${accent}33`,
+    borderRadius: 24, padding: "36px 44px", width: "100%",
+  };
+  switch (visual.type) {
+    case "stat":
+      return (
+        <div style={{ ...card, textAlign: "center" }}>
+          <p style={{ fontSize: 130, fontWeight: 900, color: accent, lineHeight: 1 }}>{visual.number}</p>
+          {visual.label && <p style={{ fontSize: 32, fontWeight: 700, color: "#3f3f46", marginTop: 14 }}>{visual.label}</p>}
+        </div>
+      );
+    case "checklist":
+    case "bullets":
+      return (
+        <div style={{ ...card, display: "flex", flexDirection: "column", gap: 22 }}>
+          {(visual.items ?? []).slice(0, 3).map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 20 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: visual.type === "checklist" ? 12 : "50%",
+                background: accent, color: "white", fontSize: 26, fontWeight: 900,
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>{visual.type === "checklist" ? "✓" : i + 1}</div>
+              <p style={{ fontSize: 32, fontWeight: 700, color: "#27272a", lineHeight: 1.25 }}>{item}</p>
+            </div>
+          ))}
+        </div>
+      );
+    case "comparison":
+      return (
+        <div style={{ display: "flex", gap: 20, width: "100%" }}>
+          <div style={{ ...card, flex: 1, borderColor: "#ef444455", padding: "30px 32px" }}>
+            <p style={{ fontSize: 26, fontWeight: 900, color: "#ef4444", marginBottom: 14 }}>{visual.leftLabel ?? "❌"}</p>
+            <p style={{ fontSize: 30, fontWeight: 700, color: "#3f3f46", lineHeight: 1.3 }}>{visual.left}</p>
+          </div>
+          <div style={{ ...card, flex: 1, borderColor: "#22c55e55", padding: "30px 32px" }}>
+            <p style={{ fontSize: 26, fontWeight: 900, color: "#22c55e", marginBottom: 14 }}>{visual.rightLabel ?? "✅"}</p>
+            <p style={{ fontSize: 30, fontWeight: 700, color: "#3f3f46", lineHeight: 1.3 }}>{visual.right}</p>
+          </div>
+        </div>
+      );
+    case "quote":
+      return (
+        <div style={{ ...card, borderLeft: `10px solid ${accent}` }}>
+          <p style={{ fontSize: 40, fontWeight: 800, color: "#27272a", lineHeight: 1.35, fontStyle: "italic" }}>
+            “{visual.text}”
+          </p>
+          {visual.source && <p style={{ fontSize: 26, color: "#71717a", marginTop: 16, fontWeight: 600 }}>— {visual.source}</p>}
+        </div>
+      );
+    case "code":
+      return (
+        <div style={{
+          width: "100%", borderRadius: 20, overflow: "hidden",
+          boxShadow: `0 16px 50px rgba(0,0,0,0.3)`,
+        }}>
+          <div style={{ height: 44, background: "#27272a", display: "flex", alignItems: "center", gap: 10, padding: "0 18px" }}>
+            {["#ef4444", "#eab308", "#22c55e"].map((c) => (
+              <div key={c} style={{ width: 14, height: 14, borderRadius: "50%", background: c }} />
+            ))}
+          </div>
+          <div style={{ background: "#18181b", padding: "30px 36px" }}>
+            {(visual.lines ?? []).map((line, i) => (
+              <p key={i} style={{ fontSize: 30, fontFamily: "monospace", color: "#a5f3fc", lineHeight: 1.7 }}>
+                <span style={{ color: "#52525b", marginRight: 18 }}>{i + 1}</span>{line}
+              </p>
+            ))}
+          </div>
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
 // ── Carousel — satu slide per render ─────────────────────────────────────────
 export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideProps> = ({
-  videoTitle, subtitle, introEmoji, accent, tips, ctaText,
+  videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout,
   watermarkHandle = "", watermarkLogo, style,
   slideIndex, totalSlides,
 }) => {
@@ -272,6 +387,66 @@ export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideP
   const tip = tips[tipIndex];
   if (!tip) return null;
 
+  const slideLayout = resolveTipLayout(layout ?? "auto", tip, tipIndex);
+  const media = tip.screenshotFile
+    ? <SlideScreenshot file={tip.screenshotFile} accent={ac} />
+    : tip.visual
+      ? <StaticVisual visual={tip.visual} accent={ac} />
+      : null;
+
+  // ── Layout SIDE — teks kiri-atas, media besar di bawah ──
+  if (slideLayout === "side") {
+    return (
+      <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
+        {BG}
+        {/* Accent bar kiri */}
+        <div style={{ position: "absolute", left: 0, top: 0, width: 14, height: "100%", background: ac, boxShadow: `0 0 50px ${ac}66` }} />
+        <AbsoluteFill style={{ display: "flex", flexDirection: "column", padding: "150px 90px 130px", justifyContent: "flex-start" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 36 }}>
+            <div style={{
+              width: 88, height: 88, borderRadius: "50%", background: ac,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 46, fontWeight: 900, color: "white", flexShrink: 0,
+              boxShadow: `0 0 36px ${ac}66`,
+            }}>{tipIndex + 1}</div>
+            <SlideIcon emoji={tip.emoji} iconFile={tip.iconFile} size={88} accent={ac} />
+          </div>
+          <p style={{ fontSize: 66, fontWeight: 900, color: "#18181b", lineHeight: 1.1, letterSpacing: "-1.5px", marginBottom: 18 }}>{tip.title}</p>
+          <p style={{ fontSize: 34, color: "#71717a", fontWeight: 600, lineHeight: 1.4, marginBottom: 44 }}>{tip.subtitle}</p>
+          {media && <div style={{ flex: 1, display: "flex", alignItems: "flex-start" }}>{media}</div>}
+        </AbsoluteFill>
+        <SlideCounter current={slideIndex + 1} total={totalSlides} accent={ac} />
+        <ImageWatermark handle={watermarkHandle} logo={watermarkLogo} />
+      </AbsoluteFill>
+    );
+  }
+
+  // ── Layout BOLD — angka raksasa background, konten tengah ──
+  if (slideLayout === "bold") {
+    return (
+      <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
+        {BG}
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 10, background: `linear-gradient(90deg, ${ac}, transparent)` }} />
+        <div style={{
+          position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          fontSize: 720, fontWeight: 900, color: `${ac}10`, lineHeight: 1, userSelect: "none",
+        }}>{tipIndex + 1}</div>
+        <AbsoluteFill style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "140px 90px" }}>
+          <div style={{ marginBottom: 36 }}>
+            <SlideIcon emoji={tip.emoji} iconFile={tip.iconFile} size={120} accent={ac} />
+          </div>
+          <p style={{ fontSize: 74, fontWeight: 900, color: "#18181b", textAlign: "center", lineHeight: 1.05, letterSpacing: "-2px", marginBottom: 22 }}>{tip.title}</p>
+          <div style={{ width: 160, height: 6, background: ac, borderRadius: 3, boxShadow: `0 0 20px ${ac}`, marginBottom: 26 }} />
+          <p style={{ fontSize: 34, color: "#71717a", textAlign: "center", fontWeight: 600, lineHeight: 1.4, maxWidth: 800, marginBottom: 44 }}>{tip.subtitle}</p>
+          {media}
+        </AbsoluteFill>
+        <SlideCounter current={slideIndex + 1} total={totalSlides} accent={ac} />
+        <ImageWatermark handle={watermarkHandle} logo={watermarkLogo} />
+      </AbsoluteFill>
+    );
+  }
+
+  // ── Layout CENTER (default) ──
   return (
     <AbsoluteFill style={{ fontFamily: "sans-serif" }}>
       {BG}
@@ -288,11 +463,9 @@ export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideP
           boxShadow: `0 0 40px ${ac}66`, marginBottom: 32,
         }}>{tipIndex + 1}</div>
 
-        {/* Emoji */}
-        <span style={{
-          fontSize: 140, lineHeight: 1, marginBottom: 32,
-          filter: `drop-shadow(0 0 28px ${ac}66)`,
-        }}>{tip.emoji}</span>
+        <div style={{ marginBottom: 32 }}>
+          <SlideIcon emoji={tip.emoji} iconFile={tip.iconFile} size={140} accent={ac} />
+        </div>
 
         {/* Title */}
         <p style={{
@@ -308,11 +481,12 @@ export const InstagramCarouselSlideComposition: React.FC<InstagramCarouselSlideP
           marginBottom: 40,
         }}>{tip.subtitle}</p>
 
-        {/* Accent bar */}
-        <div style={{
-          height: 6, width: 120, borderRadius: 3,
-          background: ac, boxShadow: `0 0 20px ${ac}88`,
-        }} />
+        {media ?? (
+          <div style={{
+            height: 6, width: 120, borderRadius: 3,
+            background: ac, boxShadow: `0 0 20px ${ac}88`,
+          }} />
+        )}
       </AbsoluteFill>
       <SlideCounter current={slideIndex + 1} total={totalSlides} accent={ac} />
       <ImageWatermark handle={watermarkHandle} logo={watermarkLogo} />

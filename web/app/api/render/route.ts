@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     ref: "main",
     inputs: {
       scenes_json: JSON.stringify(scenes),
-      props_json: JSON.stringify({ videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout: layout ?? "center", watermarkHandle: watermarkHandle ?? "", watermarkLogoUrl: watermarkLogoUrl ?? null, profile: profile ?? "creavoo" }),
+      props_json: JSON.stringify({ videoTitle, subtitle, introEmoji, accent, tips, ctaText, layout: layout ?? "auto", watermarkHandle: watermarkHandle ?? "", watermarkLogoUrl: watermarkLogoUrl ?? null, profile: profile ?? "creavoo" }),
       voice: voice ?? process.env.TTS_VOICE ?? "id-ID-ArdiNeural",
     },
   };

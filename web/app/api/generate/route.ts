@@ -46,7 +46,9 @@ const VISUAL_SCHEMA = `        "visual": {
         "right": "string (jika type=comparison: versi benar/pro, maks 50 karakter)",
         "leftLabel": "string (jika type=comparison: label kiri, e.g. '❌ Pemula')",
         "rightLabel": "string (jika type=comparison: label kanan, e.g. '✅ Pro')"
-      }`;
+      },
+      "iconSlug": "string (OPSIONAL — HANYA jika tip membahas brand/tool spesifik: slug simple-icons huruf kecil, e.g. 'github', 'figma', 'tiktok', 'instagram', 'canva', 'notion', 'openai', 'googlechrome'. Kosongkan jika tidak ada brand spesifik)",
+      "toolUrl": "string (OPSIONAL — HANYA jika tip membahas tool/website spesifik: URL resmi homepage tool tersebut, e.g. 'https://canva.com'. Kosongkan jika tidak relevan)"`;
 
 const VISUAL_RULES = `- Visual type WAJIB BERVARIASI — dari 5 tips, gunakan minimal 3 type berbeda
   * stat → metrik, waktu, angka impresif yang bisa dikutip
@@ -56,7 +58,8 @@ const VISUAL_RULES = `- Visual type WAJIB BERVARIASI — dari 5 tips, gunakan mi
   * code → snippet pendek, command, syntax
   * bullets → kalau tidak ada yang lebih cocok
 - Pilih visual type berdasarkan ISI tip, bukan kebiasaan. Comparison dan stat paling viral
-- items/lines: TEPAT 3 item (maks 38 karakter masing-masing)`;
+- items/lines: TEPAT 3 item (maks 38 karakter masing-masing)
+- iconSlug & toolUrl: isi HANYA jika tip menyebut brand/tool nyata (GitHub, Figma, Canva, TikTok, CapCut, Notion, dll) — jangan mengarang slug/URL`;
 
 function buildSystemPrompt(
   useKnowledge: boolean,

@@ -7,6 +7,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { VisualBlock, type VisualData } from "./VisualBlock";
+import { TipIcon, ScreenshotFrame } from "./TipMedia";
 
 type Props = {
   duration: number;
@@ -17,11 +18,13 @@ type Props = {
   accent: string;
   bullets?: string[];
   visual?: VisualData;
+  iconFile?: string;
+  screenshotFile?: string;
   profile?: "creavoo" | "zaportfolio";
 };
 
 export const TipScene: React.FC<Props> = ({
-  duration, number, title, subtitle, emoji, accent, bullets, visual, profile = "creavoo",
+  duration, number, title, subtitle, emoji, accent, bullets, visual, iconFile, screenshotFile, profile = "creavoo",
 }) => {
   const isZap = profile === "zaportfolio";
   const frame = useCurrentFrame();
@@ -35,7 +38,7 @@ export const TipScene: React.FC<Props> = ({
   const resolvedVisual: VisualData | null = visual ?? (
     bullets && bullets.length > 0 ? { type: "bullets", items: bullets } : null
   );
-  const hasVisual = resolvedVisual !== null;
+  const hasVisual = resolvedVisual !== null || !!screenshotFile;
 
   const visualStartFrame = Math.floor(duration * 0.42);
 
@@ -69,11 +72,10 @@ export const TipScene: React.FC<Props> = ({
           {number}
         </div>
         <div style={{
-          fontSize: 100, lineHeight: 1, marginBottom: 28,
+          marginBottom: 28,
           opacity: emojiIn, transform: `scale(${0.6 + emojiIn * 0.4}) translateY(${emojiFloat}px)`,
-          filter: `drop-shadow(0 0 24px ${accent}66)`,
         }}>
-          {emoji}
+          <TipIcon emoji={emoji} iconFile={iconFile} size={100} accent={accent} />
         </div>
         <p style={{
           fontSize: 64, fontWeight: 900, color: isZap ? "#1a3358" : "#18181b", textAlign: "center",
@@ -96,7 +98,11 @@ export const TipScene: React.FC<Props> = ({
           {subtitle}
         </p>
 
-        {hasVisual && frame >= visualStartFrame - 4 && (
+        {screenshotFile && frame >= visualStartFrame - 4 ? (
+          <div style={{ position: "absolute", top: 0, left: 40, right: 40, opacity: visualOpacity }}>
+            <ScreenshotFrame file={screenshotFile} accent={accent} />
+          </div>
+        ) : hasVisual && frame >= visualStartFrame - 4 && (
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, opacity: visualOpacity }}>
             <VisualBlock visual={resolvedVisual!} frame={frame} fps={fps} startFrame={visualStartFrame} accent={accent} />
           </div>

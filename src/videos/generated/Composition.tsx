@@ -17,9 +17,13 @@ export type TipData = {
   emoji: string;
   bullets?: string[];
   visual?: VisualData;
+  iconSlug?: string;
+  toolUrl?: string;
+  iconFile?: string;       // di-download workflow ke public/, fallback emoji
+  screenshotFile?: string; // di-download workflow ke public/, opsional
 };
 
-export type VideoLayout = "center" | "side" | "bold";
+export type VideoLayout = "center" | "side" | "bold" | "auto";
 
 export type GeneratedVideoProps = {
   sceneDurations: number[];
@@ -39,11 +43,23 @@ export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
 
-const TIP_SCENE_MAP: Record<VideoLayout, React.FC<{ duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; profile?: "creavoo" | "zaportfolio" }>> = {
+type TipSceneProps = { duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; iconFile?: string; screenshotFile?: string; profile?: "creavoo" | "zaportfolio" };
+
+const TIP_SCENE_MAP: Record<"center" | "side" | "bold", React.FC<TipSceneProps>> = {
   center: TipScene,
   side: TipSceneSide,
   bold: TipSceneBold,
 };
+
+// Layout auto: pilih per tip berdasarkan konten, rotasi biar variatif
+export function resolveTipLayout(layout: VideoLayout, tip: TipData, index: number): "center" | "side" | "bold" {
+  if (layout !== "auto") return layout;
+  if (tip.screenshotFile) return "side";
+  const vt = tip.visual?.type;
+  if (vt === "stat" || vt === "comparison") return "bold";
+  if (vt === "code") return "side";
+  return (["center", "side", "bold"] as const)[index % 3];
+}
 
 export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   sceneDurations,
@@ -53,12 +69,11 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   accent,
   tips,
   ctaText,
-  layout = "center",
+  layout = "auto",
   watermarkHandle = "",
   watermarkLogo,
   profile = "creavoo",
 }) => {
-  const TipComponent = TIP_SCENE_MAP[layout] ?? TipScene;
   const durations =
     sceneDurations.length === SCENE_IDS.length
       ? sceneDurations
@@ -91,21 +106,26 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
           />
         </Series.Sequence>
 
-        {tips.map((tip, i) => (
-          <Series.Sequence key={i} durationInFrames={durations[i + 1]} premountFor={30}>
-            <TipComponent
-              duration={durations[i + 1]}
-              number={i + 1}
-              title={tip.title}
-              subtitle={tip.subtitle}
-              emoji={tip.emoji}
-              accent={isZaportfolio ? "#1a3358" : accentColor}
-              bullets={tip.bullets}
-              visual={tip.visual}
-              profile={profile}
-            />
-          </Series.Sequence>
-        ))}
+        {tips.map((tip, i) => {
+          const TipComponent = TIP_SCENE_MAP[resolveTipLayout(layout, tip, i)];
+          return (
+            <Series.Sequence key={i} durationInFrames={durations[i + 1]} premountFor={30}>
+              <TipComponent
+                duration={durations[i + 1]}
+                number={i + 1}
+                title={tip.title}
+                subtitle={tip.subtitle}
+                emoji={tip.emoji}
+                accent={isZaportfolio ? "#1a3358" : accentColor}
+                bullets={tip.bullets}
+                visual={tip.visual}
+                iconFile={tip.iconFile}
+                screenshotFile={tip.screenshotFile}
+                profile={profile}
+              />
+            </Series.Sequence>
+          );
+        })}
 
         <Series.Sequence durationInFrames={durations[6]} premountFor={30}>
           <Outro
