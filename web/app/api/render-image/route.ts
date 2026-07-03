@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveJob } from "../schedule/route";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -8,6 +9,7 @@ export async function POST(req: NextRequest) {
     type = "single",  // "single" | "carousel"
     totalSlides = 7,
     style = "creavoo",
+    caption, hashtags, autoInstagram = false,
   } = body;
 
   const resolvedAccent = style === "zaportfolio" ? "#1a3358" : accent;
@@ -51,6 +53,17 @@ export async function POST(req: NextRequest) {
   );
   const runsData = await runsRes.json();
   const runId = runsData.workflow_runs?.[0]?.id ?? null;
+
+  // Job record — webhook /api/schedule/complete auto-post carousel ke Instagram
+  // server-side setelah render selesai, walau browser sudah ditutup.
+  if (runId && type === "carousel") {
+    await saveJob({
+      runId, createdAt: new Date().toISOString(), status: "rendering", mediaType: "carousel",
+      videoTitle: videoTitle ?? "Untitled", caption, hashtags,
+      autoTikTok: false, autoInstagram, igShareToFeed: true,
+      profile: style ?? "creavoo",
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ runId });
 }

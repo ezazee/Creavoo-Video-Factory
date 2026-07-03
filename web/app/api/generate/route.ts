@@ -4,11 +4,7 @@ import fs from "fs";
 import path from "path";
 import { put } from "@vercel/blob";
 import { readMemory, isDuplicateTitle } from "../../../lib/memory";
-
-const client = new OpenAI({
-  baseURL: process.env.AI_BASE_URL,
-  apiKey: process.env.AI_API_KEY,
-});
+import { loadConfig } from "../../../lib/config";
 
 function loadCreavooKnowledge(): string {
   try {
@@ -220,10 +216,11 @@ export async function POST(req: NextRequest) {
   const isZap = profile === "zaportfolio";
   const knowledge = (!isZap && useKnowledge) ? loadCreavooKnowledge() : "";
 
+  const config = await loadConfig();
+  const client = new OpenAI({ baseURL: config.aiBaseUrl, apiKey: config.aiApiKey });
+
   // Gunakan analytics key sesuai profile
-  const zernioKey = isZap
-    ? process.env.ZERNIO_API_KEY_ZAPORTFOLIO
-    : process.env.ZERNIO_API_KEY_CREAVOO ?? process.env.ZERNIO_API_KEY;
+  const zernioKey = isZap ? config.zernioKeyZaportfolio : config.zernioKeyCreavoo;
 
   // Jalankan memory + analytics secara paralel
   const [previousTitles, analyticsHint] = await Promise.all([
@@ -274,7 +271,7 @@ export async function POST(req: NextRequest) {
 
         for (let attempt = 0; attempt < 3; attempt++) {
           const aiStream = await client.chat.completions.create({
-            model: "cerebras/gpt-oss-120b",
+            model: config.aiModel,
             messages,
             temperature: attempt === 0 ? 0.85 : 0.95,
             max_tokens: 3500,

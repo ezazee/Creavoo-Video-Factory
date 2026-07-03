@@ -86,7 +86,7 @@ async function processPendingJobs(profile = "creavoo") {
         : "";
 
       const jobProfile = job.profile ?? "creavoo";
-      if (job.mediaType !== "carousel" && job.autoTikTok && !job.tiktokUrl && jobProfile !== "zaportfolio") {
+      if (job.mediaType !== "carousel" && job.autoTikTok && !job.tiktokUrl) {
         try {
           const r = await callInternal("/api/publish", "POST", {
             platform: "tiktok", videoUrl: updated.videoUrl, caption: captionFull,
@@ -239,16 +239,16 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
   const needCarousel = isCarouselTime || (force && (dayConfig.carouselTimes ?? []).length > 0);
 
   // Generate script untuk video dan carousel secara paralel agar tidak timeout
-  const trendsData = isZaportfolio ? { topics: [] } : await callInternal("/api/trends").catch(() => ({ topics: [] }));
+  const trendsData = await callInternal(`/api/trends?profile=${profile}${isZaportfolio ? `&contentTheme=${contentTheme}` : ""}`).catch(() => ({ topics: [] }));
 
   const [videoScript, carouselScript] = await Promise.all([
     needVideo
-      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective })
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective, profile })
           .then((s: Record<string, unknown>) => { log.push(`[VIDEO] ✓ script: "${s.videoTitle}"`); return s; })
           .catch((e: unknown) => { log.push(`[VIDEO] generate error: ${e}`); return null; })
       : Promise.resolve(null),
     needCarousel
-      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective })
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective, profile })
           .then((s: Record<string, unknown>) => { log.push(`[CAROUSEL] ✓ script: "${s.videoTitle}"`); return s; })
           .catch((e: unknown) => { log.push(`[CAROUSEL] generate error: ${e}`); return null; })
       : Promise.resolve(null),
@@ -261,7 +261,7 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
     } else {
       try {
         const renderRes = await callInternal("/api/render", "POST", {
-          ...videoScript, voice: dayConfig.voice, watermarkHandle: "", watermarkLogoUrl: null,
+          ...videoScript, voice: dayConfig.voice, watermarkHandle: "", watermarkLogoUrl: null, profile,
         });
         const runId: number = renderRes.runId;
         log.push(`[VIDEO] render triggered runId=${runId}`);

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveJob } from "../schedule/route";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const { scenes, videoTitle, subtitle, introEmoji, accent, tips, ctaText, voice, layout, watermarkHandle, watermarkLogoUrl, profile } = body;
+  const { scenes, videoTitle, subtitle, introEmoji, accent, tips, ctaText, voice, layout, watermarkHandle, watermarkLogoUrl, profile,
+    caption, hashtags, autoTikTok = false, autoInstagram = false, igShareToFeed = true } = body;
 
   // Guard: scenes harus ada dan valid
   if (!Array.isArray(scenes) || scenes.length === 0) {
@@ -51,6 +53,17 @@ export async function POST(req: NextRequest) {
   );
   const runsData = await runsRes.json();
   const runId = runsData.workflow_runs?.[0]?.id ?? null;
+
+  // Job record — webhook /api/schedule/complete pakai ini untuk auto-post
+  // server-side setelah render selesai, walau browser sudah ditutup.
+  if (runId) {
+    await saveJob({
+      runId, createdAt: new Date().toISOString(), status: "rendering", mediaType: "video",
+      videoTitle: videoTitle ?? "Untitled", caption, hashtags,
+      autoTikTok, autoInstagram, igShareToFeed,
+      profile: profile ?? "creavoo",
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ runId });
 }

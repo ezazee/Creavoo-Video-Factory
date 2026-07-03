@@ -7,6 +7,20 @@ export const maxDuration = 60;
 
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
+// Panggil /api/publish internal — satu jalur publish untuk manual & scheduled
+async function publishInternal(body: Record<string, unknown>): Promise<{ postUrl?: string }> {
+  const base = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const res = await fetch(`${base}/api/publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await res.json();
+  if (!res.ok || d.error) throw new Error(d.error ?? `publish ${res.status}`);
+  return d;
+}
+
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-schedule-secret");
   const expectedSecret = process.env.SCHEDULE_WEBHOOK_SECRET;
@@ -19,7 +33,10 @@ export async function POST(req: NextRequest) {
 
   const job = await loadJob(Number(runId));
   if (!job) {
-    return NextResponse.json({ ok: true, skipped: "not a scheduled job" });
+    return NextResponse.json({ ok: true, skipped: "no job record for this run" });
+  }
+  if (job.status === "posted") {
+    return NextResponse.json({ ok: true, skipped: "already posted" });
   }
 
   let updated: ScheduleJob;
@@ -50,123 +67,75 @@ export async function POST(req: NextRequest) {
 
   const captionFull = job.caption
     ? job.caption + (job.hashtags?.length ? "\n\n" + job.hashtags.map(h => `#${h}`).join(" ") : "")
-    : "";
+    : job.videoTitle;
 
   const jobProfile = job.profile ?? "creavoo";
-  const zernioKey = jobProfile === "zaportfolio"
-    ? process.env.ZERNIO_API_KEY_ZAPORTFOLIO
-    : (process.env.ZERNIO_API_KEY_CREAVOO ?? process.env.ZERNIO_API_KEY);
-  if (zernioKey) {
-    const accounts = await getAccounts(zernioKey);
+  const errors: string[] = [];
 
-    if (job.mediaType !== "carousel" && job.autoTikTok && !job.tiktokUrl) {
-      try {
-        const accountId = accounts.find((a: { platform: string }) => a.platform?.toLowerCase() === "tiktok")?._id ?? "";
-        const res = await fetch("https://zernio.com/api/v1/posts", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${zernioKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: captionFull,
-            mediaItems: [{ url: updated.videoUrl, type: "video" }],
-            platforms: [{ platform: "tiktok", accountId }],
-            publishNow: true,
-            tiktokSettings: {
-              privacy_level: "PUBLIC_TO_EVERYONE",
-              allow_comment: true,
-              video_cover_timestamp_ms: 3000,
-              ...(updated.thumbnailUrl ? { video_cover_image_url: updated.thumbnailUrl } : {}),
-            },
-          }),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          updated = { ...updated, tiktokUrl: d.postUrl ?? "posted", status: "posted" };
-        }
-      } catch { /* non-blocking */ }
+  // ── TikTok (video saja) — berlaku untuk SEMUA profile ──────────────────────
+  if (job.mediaType !== "carousel" && job.autoTikTok && !job.tiktokUrl) {
+    try {
+      const r = await publishInternal({
+        platform: "tiktok", videoUrl: updated.videoUrl, caption: captionFull,
+        thumbnailUrl: updated.thumbnailUrl, profile: jobProfile,
+      });
+      updated = { ...updated, tiktokUrl: r.postUrl ?? "posted", status: "posted" };
+    } catch (e) {
+      errors.push(`TikTok: ${String(e instanceof Error ? e.message : e).slice(0, 200)}`);
     }
+  }
 
-    if (job.autoInstagram && !job.instagramUrl) {
-      try {
-        const igAccount = accounts.find((a: { platform: string }) =>
-          a.platform?.toLowerCase().includes("instagram")
-        );
-        const accountId = igAccount?._id ?? "";
-
-        let mediaItems: { url: string; type: string; order?: number }[];
-        let platformSpecificData: Record<string, unknown>;
-
-        if (job.mediaType === "carousel" && updated.imageUrls?.length) {
-          mediaItems = updated.imageUrls.map((url, i) => ({ url, type: "image", order: i }));
-          platformSpecificData = { contentType: "carousel", shareToFeed: true };
-        } else {
-          mediaItems = [{ url: updated.videoUrl!, type: "video" }];
-          platformSpecificData = {
-            contentType: "reels",
-            shareToFeed: job.igShareToFeed,
-            ...(updated.thumbnailUrl ? { instagramThumbnail: updated.thumbnailUrl } : { thumbOffset: 3000 }),
-          };
-        }
-
-        const res = await fetch("https://zernio.com/api/v1/posts", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${zernioKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: captionFull,
-            mediaItems,
-            platforms: [{ platform: "instagram", accountId, platformSpecificData }],
-            publishNow: true,
-          }),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          updated = { ...updated, instagramUrl: d.postUrl ?? "posted", status: "posted" };
-        } else {
-          const errText = await res.text();
-          await sendTelegram(
-            `❌ <b>Gagal post ke Instagram</b>\n` +
-            `📌 <i>${job.videoTitle}</i>\n` +
-            `🗂 ${job.mediaType} · runId ${job.runId}\n` +
-            `⚠️ Error: Zernio ${res.status} — ${errText.slice(0, 200)}`
-          );
-        }
-      } catch (e) {
-        await sendTelegram(
-          `❌ <b>Gagal post ke Instagram</b>\n` +
-          `📌 <i>${job.videoTitle}</i>\n` +
-          `🗂 ${job.mediaType} · runId ${job.runId}\n` +
-          `⚠️ Error: ${String(e).slice(0, 200)}`
-        );
-      }
+  // ── Instagram (video reels / carousel) ──────────────────────────────────────
+  if (job.autoInstagram && !job.instagramUrl) {
+    try {
+      const body = job.mediaType === "carousel"
+        ? { platform: "instagram", imageUrls: updated.imageUrls, caption: captionFull, mediaType: "carousel", profile: jobProfile }
+        : { platform: "instagram", videoUrl: updated.videoUrl, caption: captionFull, thumbnailUrl: updated.thumbnailUrl, igShareToFeed: job.igShareToFeed, profile: jobProfile };
+      const r = await publishInternal(body);
+      updated = { ...updated, instagramUrl: r.postUrl ?? "posted", status: "posted" };
+    } catch (e) {
+      errors.push(`Instagram: ${String(e instanceof Error ? e.message : e).slice(0, 200)}`);
     }
   }
 
   await saveJob(updated);
 
-  // ── Telegram notifications ──────────────────────────────────────────────────
-  const typeLabel = job.mediaType === "carousel" ? "🎠 Carousel" : "🎬 Reels";
+  // ── Notifikasi Telegram ──────────────────────────────────────────────────────
+  const typeLabel = job.mediaType === "carousel" ? "🎠 Carousel" : "🎬 Video";
+  const profileLabel = jobProfile === "zaportfolio" ? "Zaportfolio" : "Creavoo";
+
+  if (errors.length) {
+    await sendTelegram(
+      `❌ <b>Gagal auto-post!</b>\n` +
+      `📌 <i>${job.videoTitle}</i>\n` +
+      `${typeLabel} · ${profileLabel} · runId ${job.runId}\n` +
+      `⚠️ ${errors.join("\n⚠️ ")}`
+    );
+  }
   if (updated.status === "posted") {
-    const igUrl = updated.instagramUrl && updated.instagramUrl !== "posted" ? `\n🔗 ${updated.instagramUrl}` : "";
+    const links = [
+      updated.tiktokUrl && updated.tiktokUrl !== "posted" ? `🎵 ${updated.tiktokUrl}` : updated.tiktokUrl ? "🎵 TikTok ✓" : "",
+      updated.instagramUrl && updated.instagramUrl !== "posted" ? `📸 ${updated.instagramUrl}` : updated.instagramUrl ? "📸 Instagram ✓" : "",
+    ].filter(Boolean).join("\n");
     await sendTelegram(
       `✅ <b>Berhasil diposting!</b>\n` +
       `📌 <i>${job.videoTitle}</i>\n` +
-      `${typeLabel}${igUrl}`
+      `${typeLabel} · ${profileLabel}${links ? `\n${links}` : ""}`
     );
-  } else if (updated.status === "done") {
-    await sendTelegram(
-      `⚠️ <b>Render selesai, tapi belum diposting</b>\n` +
-      `📌 <i>${job.videoTitle}</i>\n` +
-      `${typeLabel} · Auto-post tidak aktif atau tidak ada akun terhubung`
-    );
+  } else if (updated.status === "done" && !errors.length) {
+    if (job.autoTikTok || job.autoInstagram) {
+      // auto flag aktif tapi tidak ada yang terposting (tanpa error eksplisit) — tetap kabari
+      await sendTelegram(
+        `⚠️ <b>Render selesai, belum terposting</b>\n` +
+        `📌 <i>${job.videoTitle}</i>\n${typeLabel} · ${profileLabel}`
+      );
+    } else {
+      await sendTelegram(
+        `🎞 <b>Render selesai</b>\n` +
+        `📌 <i>${job.videoTitle}</i>\n${typeLabel} · ${profileLabel} · auto-post off — cek di Results`
+      );
+    }
   }
 
-  return NextResponse.json({ ok: true, status: updated.status, mediaType: job.mediaType });
-}
-
-async function getAccounts(token: string) {
-  const res = await fetch("https://zernio.com/api/v1/accounts", {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  const d = await res.json();
-  return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+  return NextResponse.json({ ok: true, status: updated.status, mediaType: job.mediaType, errors });
 }

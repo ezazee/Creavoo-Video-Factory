@@ -265,7 +265,7 @@ export default function Home() {
       addLog("Trigger GitHub Actions untuk render…");
       const renderRes = await fetch("/api/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, layout: layoutChoice, voice, watermarkHandle, watermarkLogoUrl: activeProfile === "zaportfolio" ? null : watermarkLogoUrl, profile: activeProfile }),
+        body: JSON.stringify({ ...data, layout: layoutChoice, voice, watermarkHandle, watermarkLogoUrl: activeProfile === "zaportfolio" ? null : watermarkLogoUrl, profile: activeProfile, autoTikTok, autoInstagram, igShareToFeed }),
       });
       if (!renderRes.ok) throw new Error(await renderRes.text());
       const { runId } = await renderRes.json();

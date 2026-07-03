@@ -3,14 +3,7 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { readMemory, isDuplicateTitle } from "../../../lib/memory";
-
-const client = new OpenAI({
-  baseURL: process.env.AI_BASE_URL,
-  apiKey: process.env.AI_API_KEY,
-});
-
-const FAST_MODEL = "cerebras/gpt-oss-120b";
-const TAVILY_KEY = process.env.TAVILY_API_KEY ?? "";
+import { loadConfig } from "../../../lib/config";
 
 const THEME_QUERIES: Record<string, string> = {
   "it-developer": "trending programming web development tips Indonesia 2026",
@@ -63,12 +56,12 @@ const FALLBACK_TOPICS: Record<string, string[]> = {
   ],
 };
 
-async function tavilySearch(query: string): Promise<string> {
+async function tavilySearch(query: string, apiKey: string): Promise<string> {
   try {
     const res = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ api_key: TAVILY_KEY, query, search_depth: "basic", max_results: 5 }),
+      body: JSON.stringify({ api_key: apiKey, query, search_depth: "basic", max_results: 5 }),
     });
     if (!res.ok) return "";
     const data = await res.json();
@@ -87,8 +80,9 @@ export async function GET(req: NextRequest) {
   const themeKey = isZaportfolio ? contentTheme : "creavoo";
   const currentYear = new Date().getFullYear();
 
+  const config = await loadConfig();
   const [searchContext, memory] = await Promise.all([
-    tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"]),
+    tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"], config.tavilyApiKey),
     readMemory(),
   ]);
 
@@ -115,8 +109,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const client = new OpenAI({ baseURL: config.aiBaseUrl, apiKey: config.aiApiKey });
     const completion = await client.chat.completions.create({
-      model: FAST_MODEL,
+      model: config.aiModel,
       messages: [
         {
           role: "user",

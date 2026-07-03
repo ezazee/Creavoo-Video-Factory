@@ -241,6 +241,7 @@ export default function PostPage() {
   const genLogsRef = useRef<typeof genLogs>([]);
   const postDataRef = useRef<PostData | null>(null);
   const [layoutChoice, setLayoutChoice] = useState<"auto" | "center" | "side" | "bold">("auto");
+  const [autoInstagram, setAutoInstagram] = useState(false);
   const [watermarkHandle, setWatermarkHandle] = useState("");
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -405,7 +406,7 @@ export default function PostPage() {
     try {
       const res = await fetch("/api/render-image", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...postData, layout: layoutChoice, watermarkHandle, watermarkLogoUrl, type: "carousel", totalSlides, style: activeProfile }),
+        body: JSON.stringify({ ...postData, layout: layoutChoice, watermarkHandle, watermarkLogoUrl, type: "carousel", totalSlides, style: activeProfile, autoInstagram }),
       });
       if (!res.ok) throw new Error(await res.text());
       const d = await res.json();
@@ -586,6 +587,20 @@ export default function PostPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Auto upload Instagram */}
+              <div className="rounded-2xl border border-white/[0.07] px-5 py-3.5 flex items-center justify-between" style={{ background: "#111113" }}>
+                <div>
+                  <p className="text-sm font-medium text-zinc-200">📸 Auto-upload ke Instagram</p>
+                  <p className="text-[11px] text-zinc-600">Carousel otomatis diposting setelah render selesai (jalan di server, aman tutup browser)</p>
+                </div>
+                <button onClick={() => setAutoInstagram(v => !v)}
+                  className="relative flex-shrink-0 rounded-full transition-colors"
+                  style={{ width: 44, height: 24, background: autoInstagram ? "#00AEEF" : "#3f3f46" }}>
+                  <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+                    style={{ transform: autoInstagram ? "translateX(20px)" : "translateX(0)" }} />
+                </button>
               </div>
 
               {/* Watermark handle */}
