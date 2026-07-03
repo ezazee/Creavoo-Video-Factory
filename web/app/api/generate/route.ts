@@ -277,7 +277,7 @@ export async function POST(req: NextRequest) {
 
         for (let attempt = 0; attempt < 2; attempt++) {
           const aiStream = await client.chat.completions.create({
-            model: process.env.AI_MODEL ?? "groq/llama-3.3-70b-versatile",
+            model: "cerebras/gpt-oss-120b",
             messages,
             temperature: attempt === 0 ? 0.85 : 0.6,
             max_tokens: 3500,
@@ -335,6 +335,15 @@ export async function POST(req: NextRequest) {
         }
         data.hashtags = (data.hashtags as string[]).map((h) => h.replace(/^#/, "")).slice(0, 15);
         data.knowledgeUsed = !isZap && useKnowledge;
+
+        // Paksa handle sesuai profile — AI kadang nulis handle profile lain
+        if (isZap) {
+          if (typeof data.ctaText === "string") data.ctaText = (data.ctaText as string).replace(/@creavoo\.id/gi, "@zaportfolio");
+          if (!(data.ctaText as string)?.includes("@zaportfolio")) data.ctaText = "Follow @zaportfolio untuk tips dev lainnya!";
+        } else {
+          if (typeof data.ctaText === "string") data.ctaText = (data.ctaText as string).replace(/@zaportfolio/gi, "@creavoo.id");
+          if (!(data.ctaText as string)?.includes("@creavoo.id")) data.ctaText = "Follow @creavoo.id untuk tips lainnya!";
+        }
 
         appendMemory(`${topic} → ${data.videoTitle}`).catch(() => {});
 

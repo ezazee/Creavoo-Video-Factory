@@ -8,7 +8,7 @@ const client = new OpenAI({
   apiKey: process.env.AI_API_KEY,
 });
 
-const FAST_MODEL = "cf/@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+const FAST_MODEL = "cerebras/gpt-oss-120b";
 const TAVILY_KEY = process.env.TAVILY_API_KEY ?? "";
 
 const THEME_QUERIES: Record<string, string> = {
