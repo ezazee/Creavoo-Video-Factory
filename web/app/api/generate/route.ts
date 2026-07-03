@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { put, head } from "@vercel/blob";
+import { put } from "@vercel/blob";
+import { readMemory, isDuplicateTitle } from "../../../lib/memory";
 
 const client = new OpenAI({
   baseURL: process.env.AI_BASE_URL,
@@ -195,16 +196,6 @@ ${VISUAL_RULES}
 const MEMORY_BLOB_KEY = "memory/history.json";
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
-async function readMemory(): Promise<string[]> {
-  try {
-    const meta = await head(MEMORY_BLOB_KEY, { token: BLOB_TOKEN });
-    const res = await fetch(meta.url);
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
 async function appendMemory(entry: string): Promise<void> {
   try {
     const existing = await readMemory();
@@ -217,8 +208,9 @@ async function appendMemory(entry: string): Promise<void> {
 
 function buildMemoryBlock(entries: string[]): string {
   if (!entries.length) return "";
-  return `\n\n---\n## MEMORY — Video yang sudah pernah dibuat (JANGAN duplikasi topik/angle ini):\n${entries.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nAturan memory:\n- Jangan buat video dengan topik, angle, atau hook yang mirip dengan list di atas\n- Topik yang sama = cari sudut pandang yang BENAR-BENAR berbeda\n- Format "topik → judul": topik adalah tema aslinya, judul adalah angle yang sudah dipakai\n- Kalau topik mirip → GANTI angle, format narasi, dan hook\n---\n`;
+  return `\n\n---\n## MEMORY — Konten yang SUDAH PERNAH dibuat (DILARANG KERAS duplikasi):\n${entries.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nAturan memory (WAJIB):\n- DILARANG membuat judul yang sama atau mirip dengan list di atas\n- DILARANG mengulang tips/poin yang sudah pernah dipakai (lihat bagian "tips:" tiap entry)\n- Topik yang sama = WAJIB cari sudut pandang, angle, hook, dan tips yang BENAR-BENAR berbeda\n- Kalau tidak bisa bikin angle baru yang berbeda, pilih sub-topik yang lebih spesifik\n---\n`;
 }
+
 
 export async function POST(req: NextRequest) {
   const { topic, useKnowledge = true, profile = "creavoo" } = await req.json();
@@ -278,11 +270,13 @@ export async function POST(req: NextRequest) {
 
         let data: Record<string, unknown> | null = null;
 
-        for (let attempt = 0; attempt < 2; attempt++) {
+        let duplicateRejected = false;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
           const aiStream = await client.chat.completions.create({
             model: "cerebras/gpt-oss-120b",
             messages,
-            temperature: attempt === 0 ? 0.85 : 0.6,
+            temperature: attempt === 0 ? 0.85 : 0.95,
             max_tokens: 3500,
             stream: true,
           });
@@ -301,26 +295,37 @@ export async function POST(req: NextRequest) {
           const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
           if (jsonMatch) jsonStr = jsonMatch[0];
 
+          let retryHint = "JSON tidak lengkap atau tidak valid. Ulangi dari awal, kembalikan JSON lengkap dan valid saja.";
           try {
             const parsed = JSON.parse(jsonStr);
             if (parsed.videoTitle && Array.isArray(parsed.tips) && parsed.tips.length === 5 && Array.isArray(parsed.scenes) && parsed.scenes.length === 7) {
-              data = parsed;
-              break;
+              // Tolak hasil yang judulnya duplikat dengan konten sebelumnya
+              if (isDuplicateTitle(parsed.videoTitle, previousTitles)) {
+                duplicateRejected = true;
+                retryHint = `Judul "${parsed.videoTitle}" DUPLIKAT dengan konten yang sudah pernah dibuat (lihat MEMORY). Ulangi dari awal dengan judul, angle, hook, dan tips yang BENAR-BENAR BERBEDA. Kembalikan JSON lengkap saja.`;
+              } else {
+                data = parsed;
+                break;
+              }
             }
           } catch { /* retry */ }
 
-          if (attempt === 0) {
+          if (attempt < 2) {
             sendEvent(controller, { type: "token", len: 0 }); // reset counter visual
-            // Tambah hint ke messages untuk retry
             messages.push(
               { role: "user", content: accumulated },
-              { role: "user", content: "JSON tidak lengkap atau tidak valid. Ulangi dari awal, kembalikan JSON lengkap dan valid saja." }
+              { role: "user", content: retryHint }
             );
           }
         }
 
         if (!data) {
-          sendEvent(controller, { type: "error", message: "AI returned invalid JSON setelah 2 percobaan" });
+          sendEvent(controller, {
+            type: "error",
+            message: duplicateRejected
+              ? "Konten dengan topik/judul ini sudah pernah dibuat. Ganti topik atau angle yang lebih spesifik, atau reset memory AI."
+              : "AI returned invalid JSON setelah 3 percobaan",
+          });
           controller.close();
           return;
         }
@@ -348,7 +353,25 @@ export async function POST(req: NextRequest) {
           if (!(data.ctaText as string)?.includes("@creavoo.id")) data.ctaText = "Follow @creavoo.id untuk tips lainnya!";
         }
 
-        appendMemory(`${topic} → ${data.videoTitle}`).catch(() => {});
+        // Bersihkan duplikasi label di visual comparison — AI suka mengulang "❌ Pemula:" di teks
+        for (const tip of data.tips as { visual?: { type?: string; left?: string; right?: string; leftLabel?: string; rightLabel?: string } }[]) {
+          const v = tip.visual;
+          if (v?.type !== "comparison") continue;
+          const strip = (text?: string, label?: string) => {
+            if (!text) return text;
+            let t = text.replace(/^[✀-➿☀-⛿⬀-⯿️❌✅⚠️]+\s*/u, "");
+            const labelWord = (label ?? "").replace(/^[^\p{L}]+/u, "").trim();
+            if (labelWord && t.toLowerCase().startsWith(labelWord.toLowerCase())) {
+              t = t.slice(labelWord.length).replace(/^\s*[:—-]\s*/, "");
+            }
+            return t.trim() || text;
+          };
+          v.left = strip(v.left, v.leftLabel);
+          v.right = strip(v.right, v.rightLabel);
+        }
+
+        const tipTitles = (data.tips as { title: string }[]).map((t) => t.title).join(", ");
+        appendMemory(`[${profile}] ${topic} → ${data.videoTitle} | tips: ${tipTitles}`).catch(() => {});
 
         sendEvent(controller, { type: "done", data });
       } catch (err) {

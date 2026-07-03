@@ -97,9 +97,40 @@ jobs:
                   print(f"  skip {url}: {e}", file=sys.stderr, flush=True)
                   return False
 
+          import subprocess
+
           props = json.loads(os.environ["PROPS_JSON"])
-          props["sceneDurations"] = []
           pathlib.Path("public").mkdir(parents=True, exist_ok=True)
+
+          # Sinkronisasi audio-visual: trim silence edge-tts + durasi eksplisit via ffprobe.
+          # Kalau gagal, sceneDurations=[] -> Remotion hitung sendiri saat render (perilaku lama).
+          FPS, TAIL = 30, 8
+          scene_ids = ["intro", "tip-1", "tip-2", "tip-3", "tip-4", "tip-5", "outro"]
+          durations = []
+          try:
+              for sid in scene_ids:
+                  mp3 = f"public/voiceover/generated/{sid}.mp3"
+                  trimmed = f"public/voiceover/generated/{sid}-trim.mp3"
+                  # Buang silence di awal & akhir (edge-tts sering menambah padding)
+                  subprocess.run([
+                      "ffmpeg", "-y", "-i", mp3, "-af",
+                      "silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
+                      "silenceremove=start_periods=1:start_threshold=-45dB,areverse",
+                      trimmed,
+                  ], check=True, capture_output=True)
+                  pathlib.Path(trimmed).replace(mp3)
+                  out = subprocess.run(
+                      ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                       "-of", "default=noprint_wrappers=1:nokey=1", mp3],
+                      check=True, capture_output=True, text=True,
+                  )
+                  secs = float(out.stdout.strip())
+                  durations.append(int(secs * FPS + 0.999) + TAIL)
+                  print(f"  {sid}: {secs:.2f}s -> {durations[-1]} frames", file=sys.stderr)
+              props["sceneDurations"] = durations
+          except Exception as e:
+              print(f"  duration precompute failed, fallback ke auto-detect: {e}", file=sys.stderr)
+              props["sceneDurations"] = []
 
           logo_url = props.pop("watermarkLogoUrl", None)
           if logo_url:

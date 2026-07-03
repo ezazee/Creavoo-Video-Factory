@@ -87,7 +87,7 @@ export const TipScene: React.FC<Props> = ({
 
       {/* ZONA BAWAH — subtitle & visual berbagi slot absolute yang SAMA. */}
       <div style={{
-        position: "absolute", top: 900, left: 80, right: 80, bottom: 180,
+        position: "absolute", top: 790, left: 80, right: 80, bottom: 180,
       }}>
         <p style={{
           position: "absolute", top: 0, left: 0, right: 0,

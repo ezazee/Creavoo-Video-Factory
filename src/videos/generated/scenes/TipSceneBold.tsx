@@ -101,7 +101,7 @@ export const TipSceneBold: React.FC<Props> = ({
 
       {/* ZONA BAWAH — subtitle & visual berbagi slot absolute yang SAMA. Crossfade tanpa overlap text. */}
       <div style={{
-        position: "absolute", top: 880, left: 80, right: 80, bottom: 200,
+        position: "absolute", top: 770, left: 80, right: 80, bottom: 200,
         display: "flex", flexDirection: "column", justifyContent: "flex-start",
       }}>
         {/* Subtitle */}

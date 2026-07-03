@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
+import { readMemory, isDuplicateTitle } from "../../../lib/memory";
 
 const client = new OpenAI({
   baseURL: process.env.AI_BASE_URL,
@@ -86,8 +87,14 @@ export async function GET(req: NextRequest) {
   const themeKey = isZaportfolio ? contentTheme : "creavoo";
   const currentYear = new Date().getFullYear();
 
-  // Tavily dan AI jalan parallel — ambil search context dulu (biasanya lebih cepat)
-  const searchContext = await tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"]);
+  const [searchContext, memory] = await Promise.all([
+    tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"]),
+    readMemory(),
+  ]);
+
+  const memoryContext = memory.length
+    ? `\nJANGAN sarankan topik yang mirip dengan konten yang SUDAH pernah dibuat berikut:\n${memory.slice(0, 30).map((m) => `- ${m.split("|")[0].trim()}`).join("\n")}\n`
+    : "";
 
   const trendContext = searchContext
     ? `Tren terbaru dari internet: ${searchContext.slice(0, 400)}\n\n`
@@ -113,7 +120,16 @@ export async function GET(req: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `${trendContext}Konteks: ${brandContext}\n\nBuat 6 ide topik video pendek tahun ${currentYear} yang relevan dengan konteks di atas. Balas HANYA JSON array 6 string bahasa Indonesia, max 60 karakter per topik. Contoh: ["topik 1","topik 2"]`,
+          content: `${trendContext}Konteks: ${brandContext}\n${memoryContext}\nBuat 6 ide topik video pendek tahun ${currentYear} yang relevan dengan konteks di atas dan BELUM pernah dibuat.
+
+Syarat topik (WAJIB):
+- KONKRET dan spesifik — sebut masalah nyata, angka, fitur, atau nama tool yang benar-benar ada. Bukan tema umum.
+- Real case yang dialami audiens sehari-hari, bukan teori
+- Bisa langsung dieksekusi jadi 5 tips actionable
+- CONTOH BURUK (generik, JANGAN seperti ini): "Tips sukses di social media", "Cara jadi kreator hebat"
+- CONTOH BAGUS (konkret): "Kenapa video 60 detik kalah sama 20 detik di FYP", "Follower 10 ribu tapi views 200? Ini penyebabnya", "Fitur CapCut tersembunyi buat auto-caption"
+
+Balas HANYA JSON array 6 string bahasa Indonesia, max 60 karakter per topik. Contoh: ["topik 1","topik 2"]`,
         },
       ],
       temperature: 0.9,
@@ -124,10 +140,14 @@ export async function GET(req: NextRequest) {
     const match = raw.match(/\[[\s\S]*\]/);
     if (match) {
       const parsed = JSON.parse(match[0]);
-      const topics: string[] = Array.isArray(parsed) ? parsed.filter((t) => typeof t === "string") : [];
+      // Filter server-side: buang saran yang duplikat dengan memory
+      const topics: string[] = (Array.isArray(parsed) ? parsed.filter((t) => typeof t === "string") : [])
+        .filter((t: string) => !isDuplicateTitle(t, memory));
       if (topics.length >= 3) return NextResponse.json({ topics: topics.slice(0, 6) });
     }
   } catch { /* fallback */ }
 
-  return NextResponse.json({ topics: FALLBACK_TOPICS[fallbackKey] ?? FALLBACK_TOPICS["creavoo"] });
+  const fallback = (FALLBACK_TOPICS[fallbackKey] ?? FALLBACK_TOPICS["creavoo"])
+    .filter((t) => !isDuplicateTitle(t, memory));
+  return NextResponse.json({ topics: fallback.length ? fallback : FALLBACK_TOPICS[fallbackKey] ?? FALLBACK_TOPICS["creavoo"] });
 }

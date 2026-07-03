@@ -41,6 +41,13 @@ const makeMetadataGenerated = (
   fallback: number[],
 ): CalculateMetadataFunction<GeneratedVideoProps> => {
   return async ({ props }) => {
+    // Durasi eksplisit dari workflow (ffprobe) — paling akurat, jangan hitung ulang
+    if (props.sceneDurations?.length === SCENE_IDS.length) {
+      return {
+        durationInFrames: props.sceneDurations.reduce((sum, d) => sum + d, 0),
+        props,
+      };
+    }
     try {
       const seconds = await Promise.all(
         SCENE_IDS.map((id) => getAudioDuration(staticFile(genAudioPath(id)))),
