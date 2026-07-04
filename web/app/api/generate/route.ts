@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
   const isZap = profile === "zaportfolio";
   const knowledge = (!isZap && useKnowledge) ? loadCreavooKnowledge() : "";
 
-  const config = await loadConfig();
+  const config = loadConfig();
   const client = new OpenAI({ baseURL: config.aiBaseUrl, apiKey: config.aiApiKey });
 
   // Gunakan analytics key sesuai profile

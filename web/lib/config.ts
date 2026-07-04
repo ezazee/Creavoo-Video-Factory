@@ -1,48 +1,16 @@
-import { put, head } from "./storage";
-
-// AI model config: satu-satunya bagian yang bisa diubah dari halaman Settings
-// tanpa redeploy (disimpan di storage, env var jadi fallback kalau field kosong).
+// AI model config: murni dari environment variables (Vercel dashboard).
 export type AiConfig = {
   aiModel: string;
   aiBaseUrl: string;
   aiApiKey: string;
 };
 
-const CONFIG_KEY = "settings/app-config.json";
-
-function envDefaults(): AiConfig {
+export function loadConfig(): AiConfig {
   return {
     aiModel: process.env.AI_MODEL ?? "cerebras/gpt-oss-120b",
     aiBaseUrl: process.env.AI_BASE_URL ?? "",
     aiApiKey: process.env.AI_API_KEY ?? "",
   };
-}
-
-// ponytail: tanpa cache — Vercel serverless jalan di banyak instance terpisah,
-// cache per-instance bikin GET setelah save bisa kena instance lama (kelihatan "gagal disimpan")
-async function loadConfigRaw(): Promise<Partial<AiConfig>> {
-  try {
-    const meta = await head(CONFIG_KEY);
-    const res = await fetch(meta.url, { cache: "no-store" });
-    return await res.json();
-  } catch {
-    return {};
-  }
-}
-
-export async function loadConfig(): Promise<AiConfig> {
-  const defaults = envDefaults();
-  const saved = await loadConfigRaw();
-  return Object.fromEntries(
-    (Object.keys(defaults) as (keyof AiConfig)[]).map((k) => [k, saved[k] || defaults[k]])
-  ) as AiConfig;
-}
-
-export async function saveConfig(partial: Partial<AiConfig>): Promise<AiConfig> {
-  const current = await loadConfigRaw();
-  const updated = { ...current, ...partial };
-  await put(CONFIG_KEY, JSON.stringify(updated));
-  return loadConfig();
 }
 
 // Zernio, Telegram, Tavily: murni environment variables — diatur di Vercel dashboard

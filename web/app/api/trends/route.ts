@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
   const themeKey = isZaportfolio ? contentTheme : "creavoo";
   const currentYear = new Date().getFullYear();
 
-  const config = await loadConfig();
+  const config = loadConfig();
   const [searchContext, memory] = await Promise.all([
     tavilySearch(THEME_QUERIES[themeKey] ?? THEME_QUERIES["creavoo"], process.env.TAVILY_API_KEY ?? ""),
     readMemory(),

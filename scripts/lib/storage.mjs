@@ -49,11 +49,41 @@ function guessContentType(pathname) {
   }
 }
 
+// Diagnosa koneksi: bedakan "secrets kosong" vs "diblokir proxy/Cloudflare".
+async function diagnose(err) {
+  console.error("─── STORAGE UPLOAD DIAGNOSTICS ───");
+  console.error("MINIO_ENDPOINT set   :", ENDPOINT ? ENDPOINT : "❌ KOSONG — cek GitHub Secrets");
+  console.error("MINIO_BUCKET set     :", BUCKET ? BUCKET : "❌ KOSONG — cek GitHub Secrets");
+  console.error("MINIO_ACCESS_KEY set :", process.env.MINIO_ACCESS_KEY ? "yes" : "❌ KOSONG — cek GitHub Secrets");
+  console.error("MINIO_SECRET_KEY set :", process.env.MINIO_SECRET_KEY ? "yes" : "❌ KOSONG — cek GitHub Secrets");
+  console.error("HTTP status          :", err?.$metadata?.httpStatusCode ?? "n/a");
+  if (ENDPOINT) {
+    try {
+      const res = await fetch(`${ENDPOINT}/${BUCKET}/`, { method: "GET" });
+      const body = (await res.text()).slice(0, 300);
+      console.error(`Raw GET ${ENDPOINT}/${BUCKET}/ → ${res.status}`);
+      console.error("Raw body (300 chars) :", body);
+      if (body.trimStart().toLowerCase().startsWith("<!doctype") || body.includes("cloudflare")) {
+        console.error("⚠️  Response berupa HTML — kemungkinan Cloudflare/WAF memblokir request dari IP GitHub Actions.");
+        console.error("    Solusi: set DNS record minio-api ke 'DNS only' (grey cloud), atau buat WAF skip rule untuk subdomain ini.");
+      }
+    } catch (e) {
+      console.error("Raw fetch gagal      :", e?.message);
+    }
+  }
+  console.error("──────────────────────────────────");
+}
+
 export async function put(pathname, body, options) {
   const contentType = options?.contentType ?? guessContentType(pathname);
-  await s3().send(new PutObjectCommand({
-    Bucket: BUCKET, Key: pathname, Body: body, ContentType: contentType,
-  }));
+  try {
+    await s3().send(new PutObjectCommand({
+      Bucket: BUCKET, Key: pathname, Body: body, ContentType: contentType,
+    }));
+  } catch (err) {
+    await diagnose(err);
+    throw err;
+  }
   return { url: urlForKey(pathname), pathname };
 }
 

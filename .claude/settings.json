@@ -27,7 +27,10 @@
       "Bash(cp /tmp/test-storage.mjs ./scratch-test-storage.mjs)",
       "Bash(node --env-file=.env.local scratch-test-storage.mjs)",
       "Bash(rm -f scratch-test-storage.mjs)",
-      "PowerShell(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep 1; if \\(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue\\) { \"still listening\" } else { \"port 3911 free\" })"
+      "PowerShell(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep 1; if \\(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue\\) { \"still listening\" } else { \"port 3911 free\" })",
+      "Bash(curl -sI \"https://minio-api.zaportfolio.my.id/\")",
+      "Bash(node -e \"import\\('./scripts/lib/storage.mjs'\\).then\\(\\(\\)=>console.log\\('storage.mjs OK'\\)\\)\")",
+      "Bash(rm -rf .next)"
     ]
   }
 }
