@@ -330,9 +330,8 @@ export default function Home() {
             localStorage.setItem("vf_history", JSON.stringify(updated));
             return updated;
           });
-          if (doneItem) {
-            if (doneItem.autoTikTok && !doneItem.tiktokUrl) publish("tiktok", doneItem);
-            if (doneItem.autoInstagram && !doneItem.instagramUrl) publish("instagram", doneItem);
+          if (doneItem && ((doneItem.autoTikTok && !doneItem.tiktokUrl) || (doneItem.autoInstagram && !doneItem.instagramUrl))) {
+            autoPublishVideo(runId, doneItem);
           }
         } else if (data.status === "failed") {
           if (pollCleanupRef.current.interval) clearInterval(pollCleanupRef.current.interval);
@@ -365,6 +364,33 @@ export default function Home() {
     await navigator.clipboard.writeText(captionText(item)).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+
+  // Auto-post setelah render selesai. Webhook server (/api/schedule/complete)
+  // mungkin sudah memposting duluan — cek job record dulu supaya tidak dobel.
+  const autoPublishVideo = async (runId: number, item: HistoryItem) => {
+    let posted: { tiktokUrl?: string; instagramUrl?: string } = {};
+    try {
+      for (let i = 0; i < 2; i++) {
+        const r = await fetch(`/api/results?runId=${runId}`).then(res => res.ok ? res.json() : null).catch(() => null);
+        if (r?.item) {
+          posted = r.item;
+          const tiktokDone = !item.autoTikTok || posted.tiktokUrl;
+          const igDone = !item.autoInstagram || posted.instagramUrl;
+          if (tiktokDone && igDone) break;
+        }
+        if (i === 0) await new Promise(res => setTimeout(res, 10000));
+      }
+    } catch { /* lanjut publish client-side */ }
+    const applyUrl = (key: "tiktokUrl" | "instagramUrl", url: string) => setHistory((prev) => {
+      const updated = prev.map((h) => h.id === item.id ? { ...h, [key]: url } : h);
+      localStorage.setItem("vf_history", JSON.stringify(updated));
+      return updated;
+    });
+    if (posted.tiktokUrl) applyUrl("tiktokUrl", posted.tiktokUrl);
+    if (posted.instagramUrl) applyUrl("instagramUrl", posted.instagramUrl);
+    if (item.autoTikTok && !item.tiktokUrl && !posted.tiktokUrl) await publish("tiktok", item);
+    if (item.autoInstagram && !item.instagramUrl && !posted.instagramUrl) await publish("instagram", item);
   };
 
   const publish = async (platform: "tiktok" | "instagram", item: HistoryItem) => {

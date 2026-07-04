@@ -2,9 +2,12 @@ import { NextRequest } from "next/server";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { put } from "@vercel/blob";
+import { put } from "@/lib/storage";
 import { readMemory, isDuplicateTitle } from "../../../lib/memory";
 import { loadConfig, getZernioKey } from "../../../lib/config";
+
+// AI generation bisa 1-3 menit (retry sampai 3x) — jangan dibunuh di 60s default
+export const maxDuration = 300;
 
 function loadCreavooKnowledge(): string {
   try {
@@ -190,15 +193,12 @@ ${VISUAL_RULES}
 }
 
 const MEMORY_BLOB_KEY = "memory/history.json";
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 async function appendMemory(entry: string): Promise<void> {
   try {
     const existing = await readMemory();
     const updated = [entry, ...existing].slice(0, 100);
-    await put(MEMORY_BLOB_KEY, JSON.stringify(updated), {
-      access: "public", token: BLOB_TOKEN, addRandomSuffix: false,
-    });
+    await put(MEMORY_BLOB_KEY, JSON.stringify(updated));
   } catch { /* non-blocking */ }
 }
 
@@ -209,7 +209,7 @@ function buildMemoryBlock(entries: string[]): string {
 
 
 export async function POST(req: NextRequest) {
-  const { topic, useKnowledge = true, profile = "creavoo" } = await req.json();
+  const { topic, useKnowledge = true, profile = "creavoo", stream: wantStream = true } = await req.json();
   const currentYear = new Date().getFullYear();
   if (!topic) return new Response(JSON.stringify({ error: "topic required" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
@@ -251,128 +251,140 @@ export async function POST(req: NextRequest) {
     ? `Tahun sekarang ${currentYear}. Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @zaportfolio\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips — prioritaskan "code" dan "comparison" untuk konten developer\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang cocok untuk konten developer Indonesia`
     : `Tahun sekarang ${currentYear}. Buat script video dengan topik: "${topic}"\n\nPENTING:\n- Kembalikan JSON lengkap, jangan dipotong\n- Tiap scene MAKSIMAL 3 kalimat pendek — target total video 1 menit sampai 1 menit 30 detik\n- Outro WAJIB sebut @creavoo.id dan creavoo.com\n- Visual type HARUS bervariasi, minimal 3 type berbeda dari 5 tips\n- JANGAN duplikasi topik/angle dari memory di atas\n- Pilih layout dan accent color yang paling cocok untuk topik ini${useKnowledge ? "\n- Gunakan knowledge Creavoo sebagai landasan fakta dan tone" : "\n- Topik bebas digital, JANGAN hard-sell Creavoo"}`;
 
-  const encoder = new TextEncoder();
+  // Inti generation — dipakai dua mode: SSE stream (browser) dan JSON biasa
+  // (panggilan internal scheduler /api/schedule/tick, n8n, dsb).
+  async function runGeneration(onProgress: (len: number) => void): Promise<Record<string, unknown>> {
+    const messages: { role: "system" | "user"; content: string }[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
 
-  function sendEvent(controller: ReadableStreamDefaultController, payload: object) {
-    controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+    let data: Record<string, unknown> | null = null;
+    let duplicateRejected = false;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const aiStream = await client.chat.completions.create({
+        model: config.aiModel,
+        messages,
+        temperature: attempt === 0 ? 0.85 : 0.95,
+        max_tokens: 3500,
+        stream: true,
+      });
+
+      let accumulated = "";
+      for await (const chunk of aiStream) {
+        const token = chunk.choices[0]?.delta?.content ?? "";
+        if (token) {
+          accumulated += token;
+          onProgress(accumulated.length);
+        }
+      }
+
+      // Parse hasil
+      let jsonStr = accumulated.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) jsonStr = jsonMatch[0];
+
+      let retryHint = "JSON tidak lengkap atau tidak valid. Ulangi dari awal, kembalikan JSON lengkap dan valid saja.";
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.videoTitle && Array.isArray(parsed.tips) && parsed.tips.length === 5 && Array.isArray(parsed.scenes) && parsed.scenes.length === 7) {
+          // Tolak hasil yang judulnya duplikat dengan konten sebelumnya
+          if (isDuplicateTitle(parsed.videoTitle, previousTitles)) {
+            duplicateRejected = true;
+            retryHint = `Judul "${parsed.videoTitle}" DUPLIKAT dengan konten yang sudah pernah dibuat (lihat MEMORY). Ulangi dari awal dengan judul, angle, hook, dan tips yang BENAR-BENAR BERBEDA. Kembalikan JSON lengkap saja.`;
+          } else {
+            data = parsed;
+            break;
+          }
+        }
+      } catch { /* retry */ }
+
+      if (attempt < 2) {
+        onProgress(0); // reset counter visual
+        messages.push(
+          { role: "user", content: accumulated },
+          { role: "user", content: retryHint }
+        );
+      }
+    }
+
+    if (!data) {
+      throw new Error(duplicateRejected
+        ? "Konten dengan topik/judul ini sudah pernah dibuat. Ganti topik atau angle yang lebih spesifik, atau reset memory AI."
+        : "AI returned invalid JSON setelah 3 percobaan");
+    }
+
+    if (!["center", "side", "bold"].includes(data.layout as string)) data.layout = "center";
+    if (typeof data.caption !== "string" || !(data.caption as string).trim()) {
+      data.caption = isZap
+        ? `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @zaportfolio buat tips dev lainnya!`
+        : `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
+    }
+    if (!Array.isArray(data.hashtags) || (data.hashtags as string[]).length === 0) {
+      data.hashtags = isZap
+        ? ["fyp", "developer", "programmer", "coding", "belajarcoding", "tipscoding", "softwaredeveloper"]
+        : ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
+    }
+    data.hashtags = (data.hashtags as string[]).map((h) => h.replace(/^#/, "")).slice(0, 15);
+    data.knowledgeUsed = !isZap && useKnowledge;
+
+    // Paksa handle sesuai profile — AI kadang nulis handle profile lain
+    if (isZap) {
+      if (typeof data.ctaText === "string") data.ctaText = (data.ctaText as string).replace(/@creavoo\.id/gi, "@zaportfolio");
+      if (!(data.ctaText as string)?.includes("@zaportfolio")) data.ctaText = "Follow @zaportfolio untuk tips dev lainnya!";
+    } else {
+      if (typeof data.ctaText === "string") data.ctaText = (data.ctaText as string).replace(/@zaportfolio/gi, "@creavoo.id");
+      if (!(data.ctaText as string)?.includes("@creavoo.id")) data.ctaText = "Follow @creavoo.id untuk tips lainnya!";
+    }
+
+    // Bersihkan duplikasi label di visual comparison — AI suka mengulang "❌ Pemula:" di teks
+    for (const tip of data.tips as { visual?: { type?: string; left?: string; right?: string; leftLabel?: string; rightLabel?: string } }[]) {
+      const v = tip.visual;
+      if (v?.type !== "comparison") continue;
+      const strip = (text?: string, label?: string) => {
+        if (!text) return text;
+        let t = text.replace(/^[✀-➿☀-⛿⬀-⯿️❌✅⚠️]+\s*/u, "");
+        const labelWord = (label ?? "").replace(/^[^\p{L}]+/u, "").trim();
+        if (labelWord && t.toLowerCase().startsWith(labelWord.toLowerCase())) {
+          t = t.slice(labelWord.length).replace(/^\s*[:—-]\s*/, "");
+        }
+        return t.trim() || text;
+      };
+      v.left = strip(v.left, v.leftLabel);
+      v.right = strip(v.right, v.rightLabel);
+    }
+
+    const tipTitles = (data.tips as { title: string }[]).map((t) => t.title).join(", ");
+    appendMemory(`[${profile}] ${topic} → ${data.videoTitle} | tips: ${tipTitles}`).catch(() => {});
+
+    return data;
   }
+
+  // ── Mode JSON biasa (scheduler internal / n8n / API eksternal) ──────────────
+  if (wantStream === false) {
+    try {
+      const data = await runGeneration(() => {});
+      return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return new Response(JSON.stringify({ error: message }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }
+
+  // ── Mode SSE stream (browser UI) ─────────────────────────────────────────────
+  const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
+      const sendEvent = (payload: object) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+      };
       try {
-        const messages: { role: "system" | "user"; content: string }[] = [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ];
-
-        let data: Record<string, unknown> | null = null;
-
-        let duplicateRejected = false;
-
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const aiStream = await client.chat.completions.create({
-            model: config.aiModel,
-            messages,
-            temperature: attempt === 0 ? 0.85 : 0.95,
-            max_tokens: 3500,
-            stream: true,
-          });
-
-          let accumulated = "";
-          for await (const chunk of aiStream) {
-            const token = chunk.choices[0]?.delta?.content ?? "";
-            if (token) {
-              accumulated += token;
-              sendEvent(controller, { type: "token", len: accumulated.length });
-            }
-          }
-
-          // Parse hasil
-          let jsonStr = accumulated.replace(/^```(?:json)?\n?/m, "").replace(/\n?```$/m, "").trim();
-          const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-          if (jsonMatch) jsonStr = jsonMatch[0];
-
-          let retryHint = "JSON tidak lengkap atau tidak valid. Ulangi dari awal, kembalikan JSON lengkap dan valid saja.";
-          try {
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.videoTitle && Array.isArray(parsed.tips) && parsed.tips.length === 5 && Array.isArray(parsed.scenes) && parsed.scenes.length === 7) {
-              // Tolak hasil yang judulnya duplikat dengan konten sebelumnya
-              if (isDuplicateTitle(parsed.videoTitle, previousTitles)) {
-                duplicateRejected = true;
-                retryHint = `Judul "${parsed.videoTitle}" DUPLIKAT dengan konten yang sudah pernah dibuat (lihat MEMORY). Ulangi dari awal dengan judul, angle, hook, dan tips yang BENAR-BENAR BERBEDA. Kembalikan JSON lengkap saja.`;
-              } else {
-                data = parsed;
-                break;
-              }
-            }
-          } catch { /* retry */ }
-
-          if (attempt < 2) {
-            sendEvent(controller, { type: "token", len: 0 }); // reset counter visual
-            messages.push(
-              { role: "user", content: accumulated },
-              { role: "user", content: retryHint }
-            );
-          }
-        }
-
-        if (!data) {
-          sendEvent(controller, {
-            type: "error",
-            message: duplicateRejected
-              ? "Konten dengan topik/judul ini sudah pernah dibuat. Ganti topik atau angle yang lebih spesifik, atau reset memory AI."
-              : "AI returned invalid JSON setelah 3 percobaan",
-          });
-          controller.close();
-          return;
-        }
-
-        if (!["center", "side", "bold"].includes(data.layout as string)) data.layout = "center";
-        if (typeof data.caption !== "string" || !(data.caption as string).trim()) {
-          data.caption = isZap
-            ? `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @zaportfolio buat tips dev lainnya!`
-            : `${data.videoTitle}\n\n${data.subtitle ?? ""}\n\nFollow @creavoo.id buat tips lainnya!`;
-        }
-        if (!Array.isArray(data.hashtags) || (data.hashtags as string[]).length === 0) {
-          data.hashtags = isZap
-            ? ["fyp", "developer", "programmer", "coding", "belajarcoding", "tipscoding", "softwaredeveloper"]
-            : ["fyp", "creavoo", "tipskonten", "socialmedia", "contentcreator"];
-        }
-        data.hashtags = (data.hashtags as string[]).map((h) => h.replace(/^#/, "")).slice(0, 15);
-        data.knowledgeUsed = !isZap && useKnowledge;
-
-        // Paksa handle sesuai profile — AI kadang nulis handle profile lain
-        if (isZap) {
-          if (typeof data.ctaText === "string") data.ctaText = (data.ctaText as string).replace(/@creavoo\.id/gi, "@zaportfolio");
-          if (!(data.ctaText as string)?.includes("@zaportfolio")) data.ctaText = "Follow @zaportfolio untuk tips dev lainnya!";
-        } else {
-          if (typeof data.ctaText === "string") data.ctaText = (data.ctaText as string).replace(/@zaportfolio/gi, "@creavoo.id");
-          if (!(data.ctaText as string)?.includes("@creavoo.id")) data.ctaText = "Follow @creavoo.id untuk tips lainnya!";
-        }
-
-        // Bersihkan duplikasi label di visual comparison — AI suka mengulang "❌ Pemula:" di teks
-        for (const tip of data.tips as { visual?: { type?: string; left?: string; right?: string; leftLabel?: string; rightLabel?: string } }[]) {
-          const v = tip.visual;
-          if (v?.type !== "comparison") continue;
-          const strip = (text?: string, label?: string) => {
-            if (!text) return text;
-            let t = text.replace(/^[✀-➿☀-⛿⬀-⯿️❌✅⚠️]+\s*/u, "");
-            const labelWord = (label ?? "").replace(/^[^\p{L}]+/u, "").trim();
-            if (labelWord && t.toLowerCase().startsWith(labelWord.toLowerCase())) {
-              t = t.slice(labelWord.length).replace(/^\s*[:—-]\s*/, "");
-            }
-            return t.trim() || text;
-          };
-          v.left = strip(v.left, v.leftLabel);
-          v.right = strip(v.right, v.rightLabel);
-        }
-
-        const tipTitles = (data.tips as { title: string }[]).map((t) => t.title).join(", ");
-        appendMemory(`[${profile}] ${topic} → ${data.videoTitle} | tips: ${tipTitles}`).catch(() => {});
-
-        sendEvent(controller, { type: "done", data });
+        const data = await runGeneration((len) => sendEvent({ type: "token", len }));
+        sendEvent({ type: "done", data });
       } catch (err) {
-        sendEvent(controller, { type: "error", message: err instanceof Error ? err.message : "Unknown error" });
+        sendEvent({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
       }
       controller.close();
     },

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { list, del } from "@vercel/blob";
+import { list, del } from "@/lib/storage";
 import { loadRecentJobs, loadJob, type ScheduleJob } from "../schedule/route";
 
 export const maxDuration = 30;
 
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 export type ResultItem = {
   runId: number;
@@ -69,9 +68,9 @@ function resolveMedia(job: ScheduleJob, videos: BlobFile[], thumbs: BlobFile[], 
 
 async function listBlobs() {
   const [videos, thumbs, slides] = await Promise.all([
-    list({ prefix: "video-", token: TOKEN }).then(r => r.blobs),
-    list({ prefix: "thumbnail-", token: TOKEN }).then(r => r.blobs),
-    list({ prefix: "carousel-", token: TOKEN }).then(r => r.blobs),
+    list({ prefix: "video-" }).then(r => r.blobs),
+    list({ prefix: "thumbnail-" }).then(r => r.blobs),
+    list({ prefix: "carousel-" }).then(r => r.blobs),
   ]);
   return { videos, thumbs, slides };
 }
@@ -192,8 +191,8 @@ export async function DELETE(req: NextRequest) {
   const jobPaths = [`schedule/jobs/creavoo/${rid}.json`, `schedule/jobs/zaportfolio/${rid}.json`, `schedule/jobs/${rid}.json`];
 
   await Promise.allSettled([
-    urls.length ? del(urls, { token: TOKEN }) : Promise.resolve(),
-    ...jobPaths.map(p => del(p, { token: TOKEN }).catch(() => {})),
+    urls.length ? del(urls) : Promise.resolve(),
+    ...jobPaths.map(p => del(p).catch(() => {})),
     deleteGithubRun(Number(runId)),
   ]);
 

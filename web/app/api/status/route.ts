@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { list } from "@vercel/blob";
+import { list } from "@/lib/storage";
 
 export async function GET(req: NextRequest) {
   const runId = req.nextUrl.searchParams.get("runId");

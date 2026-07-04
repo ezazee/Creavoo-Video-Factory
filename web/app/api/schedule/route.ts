@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put, head, list } from "@vercel/blob";
+import { put, head, list } from "@/lib/storage";
 
 export type DayConfig = {
   times: number[];          // jam WIB untuk video
@@ -42,8 +42,6 @@ export type ScheduleJob = {
   instagramUrl?: string;
   profile?: string;
 };
-
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 function profileBlobKeys(profile = "creavoo") {
   const p = profile === "zaportfolio" ? "zaportfolio" : "creavoo";
@@ -121,7 +119,7 @@ export async function loadSettings(profile = "creavoo"): Promise<ScheduleSetting
   const { SETTINGS_KEY } = profileBlobKeys(profile);
   const fallback = profile === "zaportfolio" ? DEFAULT_SETTINGS_ZAPORTFOLIO : DEFAULT_SETTINGS;
   try {
-    const meta = await head(SETTINGS_KEY, { token: TOKEN });
+    const meta = await head(SETTINGS_KEY);
     const res = await fetch(meta.url);
     return { ...fallback, ...(await res.json()) };
   } catch {
@@ -131,16 +129,12 @@ export async function loadSettings(profile = "creavoo"): Promise<ScheduleSetting
 
 export async function saveSettings(s: ScheduleSettings, profile = "creavoo") {
   const { SETTINGS_KEY } = profileBlobKeys(profile);
-  await put(SETTINGS_KEY, JSON.stringify(s), {
-    access: "public", token: TOKEN, addRandomSuffix: false,
-  });
+  await put(SETTINGS_KEY, JSON.stringify(s));
 }
 
 export async function saveJob(job: ScheduleJob) {
   const { JOBS_PREFIX } = profileBlobKeys(job.profile ?? "creavoo");
-  await put(`${JOBS_PREFIX}${job.runId}.json`, JSON.stringify(job), {
-    access: "public", token: TOKEN, addRandomSuffix: false,
-  });
+  await put(`${JOBS_PREFIX}${job.runId}.json`, JSON.stringify(job));
 }
 
 export async function loadJob(runId: number): Promise<ScheduleJob | null> {
@@ -152,7 +146,7 @@ export async function loadJob(runId: number): Promise<ScheduleJob | null> {
   ];
   for (const prefix of prefixes) {
     try {
-      const meta = await head(`${prefix}${runId}.json`, { token: TOKEN });
+      const meta = await head(`${prefix}${runId}.json`);
       const res = await fetch(meta.url);
       return await res.json();
     } catch { /* try next */ }
@@ -163,7 +157,7 @@ export async function loadJob(runId: number): Promise<ScheduleJob | null> {
 export async function loadRecentJobs(limit = 10, profile = "creavoo"): Promise<ScheduleJob[]> {
   const { JOBS_PREFIX } = profileBlobKeys(profile);
   try {
-    const { blobs } = await list({ prefix: JOBS_PREFIX, token: TOKEN });
+    const { blobs } = await list({ prefix: JOBS_PREFIX });
     const sorted = blobs.sort((a, b) =>
       new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
     ).slice(0, limit);

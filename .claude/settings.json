@@ -16,7 +16,18 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git commit -m 'fix: add missing /api/run-status route for GitHub Actions polling *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npx next *)",
+      "Bash(sed -i 's/import { list } from \"@vercel\\\\/blob\";/import { list } from \"@\\\\/lib\\\\/storage\";/' web/app/api/schedule/tick/route.ts web/app/api/schedule/complete/route.ts)",
+      "Bash(sed -i '/^const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;$/d' web/app/api/schedule/tick/route.ts web/app/api/results/route.ts web/app/api/schedule/complete/route.ts)",
+      "Bash(sed -i 's/, token: TOKEN }/ }/g' web/app/api/schedule/tick/route.ts web/app/api/results/route.ts web/app/api/schedule/complete/route.ts)",
+      "Bash(sed -i 's/import { list, del } from \"@vercel\\\\/blob\";/import { list, del } from \"@\\\\/lib\\\\/storage\";/' web/app/api/results/route.ts)",
+      "Bash(npm install *)",
+      "Bash(node -e \"import\\('./scripts/lib/storage.mjs'\\).then\\(\\(\\)=>console.log\\('storage.mjs OK'\\)\\).catch\\(e=>{console.error\\(e\\);process.exit\\(1\\)}\\)\")",
+      "Bash(cp /tmp/test-storage.mjs ./scratch-test-storage.mjs)",
+      "Bash(node --env-file=.env.local scratch-test-storage.mjs)",
+      "Bash(rm -f scratch-test-storage.mjs)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep 1; if \\(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue\\) { \"still listening\" } else { \"port 3911 free\" })"
     ]
   }
 }

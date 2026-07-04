@@ -1,6 +1,6 @@
-// Uploads rendered video + thumbnail to Vercel Blob. Called by GitHub Actions after render.
+// Uploads rendered video + thumbnail to MinIO. Called by GitHub Actions after render.
 // Usage: node scripts/upload-blob.mjs <runId>
-import { put } from "@vercel/blob";
+import { put } from "./lib/storage.mjs";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { execSync } from "node:child_process";
@@ -17,17 +17,11 @@ try {
 } catch { /* thumbnail opsional, jangan fail */ }
 
 const videoData = readFileSync(videoPath);
-const blob = await put(`video-${runId}.mp4`, videoData, {
-  access: "public",
-  token: process.env.BLOB_READ_WRITE_TOKEN,
-});
+const blob = await put(`video-${runId}.mp4`, videoData);
 console.log(blob.url);
 
 if (existsSync(thumbPath)) {
   const thumbData = readFileSync(thumbPath);
-  const thumbBlob = await put(`thumbnail-${runId}.jpg`, thumbData, {
-    access: "public",
-    token: process.env.BLOB_READ_WRITE_TOKEN,
-  });
+  const thumbBlob = await put(`thumbnail-${runId}.jpg`, thumbData);
   console.log("THUMBNAIL:" + thumbBlob.url);
 }

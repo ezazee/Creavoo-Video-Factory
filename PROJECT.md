@@ -8,7 +8,7 @@
 
 Web app untuk generate **short-form video vertikal (1080×1920, 30fps)** secara otomatis dari satu topik teks.
 
-User ketik topik → AI tulis script → GitHub Actions render video pakai Remotion + edge-tts → video MP4 tersimpan di Vercel Blob → bisa didownload / diposting ke TikTok & Instagram Reels.
+User ketik topik → AI tulis script → GitHub Actions render video pakai Remotion + edge-tts → video MP4 tersimpan di MinIO → bisa didownload / diposting ke TikTok & Instagram Reels.
 
 **Owner:** Creavoo (`creavoo.com`) — platform AI social media growth untuk creator Indonesia.
 
@@ -25,7 +25,7 @@ User ketik topik → AI tulis script → GitHub Actions render video pakai Remot
 | TTS | edge-tts Python (gratis, konsisten — ElevenLabs dihapus) |
 | Render | GitHub Actions (Ubuntu, Node 20) — gratis ~285 render/bulan |
 | Video Engine | Remotion 4.x (`npx remotion render`) |
-| Storage | Vercel Blob (MP4 + thumbnail JPG + settings + memory) |
+| Storage | MinIO (MP4 + thumbnail JPG + settings + memory) |
 | Social Publish | Zernio API (TikTok + Instagram) |
 | Analytics | Zernio API |
 | Deploy | Vercel (web app) |
@@ -97,7 +97,7 @@ Creavoo-Video-Factory/
 │       └── VisualBlock.tsx           ← dynamic visual per tip
 │
 ├── scripts/
-│   ├── upload-blob.mjs               ← upload video + thumbnail ke Vercel Blob
+│   ├── upload-blob.mjs               ← upload video + thumbnail ke MinIO
 │   └── generate-voiceover.ts         ← generate MP3 lokal (dev only)
 │
 ├── .github/workflows/
@@ -118,13 +118,19 @@ AI_MODEL=creavoo-combo
 GITHUB_REPO=ezazee/Creavoo-Video-Factory
 GITHUB_TOKEN=github_pat_...
 NEXT_PUBLIC_GITHUB_REPO=ezazee/Creavoo-Video-Factory
-BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...
+MINIO_ENDPOINT=https://minio-api.namadomain.com
+MINIO_ACCESS_KEY=...
+MINIO_SECRET_KEY=...
+MINIO_BUCKET=...
+MINIO_REGION=us-east-1
+MINIO_PUBLIC_URL=https://minio-api.namadomain.com
 ZERNIO_API_KEY=sk_...
 ```
 
 ### GitHub Repository Secrets (Settings → Secrets → Actions)
 ```
-BLOB_READ_WRITE_TOKEN   ← wajib ada, untuk upload MP4 + thumbnail setelah render
+MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET, MINIO_REGION, MINIO_PUBLIC_URL
+  ← wajib ada, untuk upload MP4/thumbnail/gambar setelah render
 ```
 
 > ElevenLabs dihapus sepenuhnya. Tidak ada `ELEVENLABS_API_KEY` di mana pun.
@@ -206,7 +212,7 @@ AI pilih tipe berdasarkan konten. Muncul animasi di 35% durasi scene:
 
 ---
 
-## Vercel Blob: Struktur Storage
+## MinIO: Struktur Storage
 
 ```
 video-{runId}.mp4           ← hasil render video
@@ -219,7 +225,7 @@ memory/history.json         ← ["topik → judul", ...] max 100 — AI memory
 
 ## AI Memory System
 
-`memory/history.json` di Vercel Blob menyimpan daftar video yang sudah pernah dibuat dalam format `"topik → judul"`.
+`memory/history.json` di MinIO menyimpan daftar video yang sudah pernah dibuat dalam format `"topik → judul"`.
 
 - Dibaca setiap kali `/api/generate` dipanggil (selalu, regardless `useKnowledge`)
 - Disimpan (await) setelah AI berhasil generate — sebelum response dikirim
@@ -278,7 +284,7 @@ memory/history.json         ← ["topik → judul", ...] max 100 — AI memory
 - Tombol **Reset memory AI** (di bawah generate) → modal peringatan → wipe Blob memory
 
 ### Fitur `/results`:
-- Load dari Vercel Blob (source of truth) + merge dengan localStorage
+- Load dari MinIO (source of truth) + merge dengan localStorage
 - Resume polling otomatis untuk video yang masih rendering
 - Preview panel: video player, download, upload TikTok/IG, caption & hashtag
 - **1 tombol Hapus** per item → delete Blob + delete GitHub Actions run sekaligus
@@ -325,7 +331,7 @@ npm run lint  # (dari root)
 - Dynamic visual blocks per tip (6 tipe, AI pilih, wajib variasi)
 - Knowledge-first flow + AI memory (simpan "topik → judul", hindari duplikasi)
 - Reset memory dari UI dengan modal konfirmasi
-- Watermark (handle + logo) tersimpan di Vercel Blob
+- Watermark (handle + logo) tersimpan di MinIO
 - Inline GitHub Actions logs + frame counter + progress bar render
 - Results page: load dari Blob, resume polling, 1 tombol hapus (Blob + Action)
 - Upload TikTok (dengan thumbnail + tiktokSettings)

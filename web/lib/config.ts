@@ -1,7 +1,7 @@
-import { put, head } from "@vercel/blob";
+import { put, head } from "./storage";
 
 // AI model config: satu-satunya bagian yang bisa diubah dari halaman Settings
-// tanpa redeploy (disimpan di Blob, env var jadi fallback kalau field kosong).
+// tanpa redeploy (disimpan di storage, env var jadi fallback kalau field kosong).
 export type AiConfig = {
   aiModel: string;
   aiBaseUrl: string;
@@ -9,7 +9,6 @@ export type AiConfig = {
 };
 
 const CONFIG_KEY = "settings/app-config.json";
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 function envDefaults(): AiConfig {
   return {
@@ -23,7 +22,7 @@ function envDefaults(): AiConfig {
 // cache per-instance bikin GET setelah save bisa kena instance lama (kelihatan "gagal disimpan")
 async function loadConfigRaw(): Promise<Partial<AiConfig>> {
   try {
-    const meta = await head(CONFIG_KEY, { token: TOKEN });
+    const meta = await head(CONFIG_KEY);
     const res = await fetch(meta.url, { cache: "no-store" });
     return await res.json();
   } catch {
@@ -42,9 +41,7 @@ export async function loadConfig(): Promise<AiConfig> {
 export async function saveConfig(partial: Partial<AiConfig>): Promise<AiConfig> {
   const current = await loadConfigRaw();
   const updated = { ...current, ...partial };
-  await put(CONFIG_KEY, JSON.stringify(updated), {
-    access: "public", token: TOKEN, addRandomSuffix: false,
-  });
+  await put(CONFIG_KEY, JSON.stringify(updated));
   return loadConfig();
 }
 

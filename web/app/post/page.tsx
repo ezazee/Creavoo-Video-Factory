@@ -240,6 +240,7 @@ export default function PostPage() {
   const [genLogs, setGenLogs] = useState<{ ts: number; msg: string; type: "info" | "ok" | "error" }[]>([]);
   const genLogsRef = useRef<typeof genLogs>([]);
   const postDataRef = useRef<PostData | null>(null);
+  const autoInstagramRef = useRef(false);
   const [layoutChoice, setLayoutChoice] = useState<"auto" | "center" | "side" | "bold">("auto");
   const [autoInstagram, setAutoInstagram] = useState(false);
   const [watermarkHandle, setWatermarkHandle] = useState("");
@@ -314,6 +315,7 @@ export default function PostPage() {
           setSlideIndex(0);
           setStep("done");
           saveImageHistory(runId, postDataRef.current, "carousel", undefined, d.slides);
+          if (autoInstagramRef.current) autoPublishCarousel(runId, d.slides);
         } else {
           setStep("error"); setError("Slide tidak ditemukan.");
         }
@@ -403,6 +405,7 @@ export default function PostPage() {
   const render = async () => {
     if (!postData) return;
     setStep("rendering"); setError(null); setCarouselSlides([]); setPublished(false); setPublishUrl(null);
+    autoInstagramRef.current = autoInstagram;
     try {
       const res = await fetch("/api/render-image", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -414,14 +417,15 @@ export default function PostPage() {
     } catch (e) { setError(String(e)); setStep("error"); }
   };
 
-  const publishToInstagram = async () => {
-    if (!carouselSlides.length || !postData) return;
+  const publishCarousel = async (slides: string[]) => {
+    const data = postDataRef.current;
+    if (!slides.length || !data) return;
     setPublishing(true);
     try {
-      const caption = postData.caption
-        ? postData.caption + (postData.hashtags?.length ? "\n\n" + postData.hashtags.map(h => `#${h}`).join(" ") : "")
-        : postData.videoTitle;
-      const body = { platform: "instagram", imageUrls: carouselSlides, caption, mediaType: "carousel", profile: activeProfile };
+      const caption = data.caption
+        ? data.caption + (data.hashtags?.length ? "\n\n" + data.hashtags.map(h => `#${h}`).join(" ") : "")
+        : data.videoTitle;
+      const body = { platform: "instagram", imageUrls: slides, caption, mediaType: "carousel", profile: activeProfile };
       const res = await fetch("/api/publish", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
@@ -430,6 +434,31 @@ export default function PostPage() {
       setPublished(true);
     } catch { /* ignore */ }
     setPublishing(false);
+  };
+
+  const publishToInstagram = () => publishCarousel(carouselSlides);
+
+  // Auto-post setelah render selesai. Webhook server (/api/schedule/complete)
+  // mungkin sudah memposting duluan — cek job record dulu supaya tidak dobel.
+  const autoPublishCarousel = async (rId: number, slides: string[]) => {
+    setPublishing(true);
+    try {
+      // Beri waktu webhook server memproses, lalu cek statusnya
+      for (let i = 0; i < 2; i++) {
+        const r = await fetch(`/api/results?runId=${rId}`).then(res => res.ok ? res.json() : null).catch(() => null);
+        const ig = r?.item?.instagramUrl;
+        if (ig) {
+          // Server sudah memposting — tinggal tampilkan hasilnya
+          if (ig !== "posted" && ig !== "uploaded") setPublishUrl(ig);
+          setPublished(true);
+          setPublishing(false);
+          return;
+        }
+        if (i === 0) await new Promise(res => setTimeout(res, 10000));
+      }
+    } catch { /* lanjut publish client-side */ }
+    setPublishing(false);
+    await publishCarousel(slides);
   };
 
   const copyCaption = () => {

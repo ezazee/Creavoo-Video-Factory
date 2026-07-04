@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { del, list } from "@vercel/blob";
-
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+import { del, list } from "@/lib/storage";
 
 export async function GET() {
-  const { blobs } = await list({ token: TOKEN });
+  const { blobs } = await list();
 
   const videos = blobs
     .filter((b) => b.pathname.endsWith(".mp4"))
@@ -44,6 +42,6 @@ export async function DELETE(req: NextRequest) {
   // Support single url or multiple urls[]
   const urls: string[] = body.urls?.length ? body.urls : body.url ? [body.url] : [];
   if (!urls.length) return NextResponse.json({ error: "url or urls required" }, { status: 400 });
-  await Promise.all(urls.map((u) => del(u, { token: TOKEN })));
+  await Promise.all(urls.map((u) => del(u)));
   return NextResponse.json({ ok: true });
 }

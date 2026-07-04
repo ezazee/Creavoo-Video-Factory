@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { list } from "@vercel/blob";
+import { list } from "@/lib/storage";
 import { loadJob, saveJob, type ScheduleJob } from "../route";
 import { sendTelegram } from "@/lib/telegram";
 
 export const maxDuration = 60;
 
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 // Panggil /api/publish internal — satu jalur publish untuk manual & scheduled
 async function publishInternal(body: Record<string, unknown>): Promise<{ postUrl?: string }> {
@@ -46,7 +45,7 @@ export async function POST(req: NextRequest) {
   let updated: ScheduleJob;
 
   if (job.mediaType === "carousel") {
-    const { blobs: slideBlobs } = await list({ prefix: `carousel-${runId}-`, token: TOKEN });
+    const { blobs: slideBlobs } = await list({ prefix: `carousel-${runId}-` });
     if (!slideBlobs.length) {
       return NextResponse.json({ error: "carousel blobs not found" }, { status: 404 });
     }
@@ -59,8 +58,8 @@ export async function POST(req: NextRequest) {
       .map(b => b.url);
     updated = { ...job, status: "done", imageUrls: slides };
   } else {
-    const { blobs: videoBlobs } = await list({ prefix: `video-${runId}`, token: TOKEN });
-    const { blobs: thumbBlobs } = await list({ prefix: `thumbnail-${runId}`, token: TOKEN });
+    const { blobs: videoBlobs } = await list({ prefix: `video-${runId}` });
+    const { blobs: thumbBlobs } = await list({ prefix: `thumbnail-${runId}` });
     const videoUrl = videoBlobs[0]?.url;
     const thumbnailUrl = thumbBlobs[0]?.url ?? undefined;
     if (!videoUrl) {

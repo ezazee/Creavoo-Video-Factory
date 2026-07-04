@@ -1,11 +1,10 @@
-import { head } from "@vercel/blob";
+import { head } from "./storage";
 
 const MEMORY_BLOB_KEY = "memory/history.json";
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 
 export async function readMemory(): Promise<string[]> {
   try {
-    const meta = await head(MEMORY_BLOB_KEY, { token: BLOB_TOKEN });
+    const meta = await head(MEMORY_BLOB_KEY);
     const res = await fetch(meta.url);
     return await res.json();
   } catch {

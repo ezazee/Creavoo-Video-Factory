@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { list } from "@vercel/blob";
-
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
+import { list } from "@/lib/storage";
 
 export async function GET(req: NextRequest) {
   const runId = req.nextUrl.searchParams.get("runId");
   if (!runId) return NextResponse.json({ error: "runId required" }, { status: 400 });
 
   // Single post
-  const { blobs: single } = await list({ prefix: `image-${runId}`, token: TOKEN });
+  const { blobs: single } = await list({ prefix: `image-${runId}` });
   if (single[0]) {
     return NextResponse.json({ type: "single", imageUrl: single[0].url });
   }
 
   // Carousel slides
-  const { blobs: slides } = await list({ prefix: `carousel-${runId}-`, token: TOKEN });
+  const { blobs: slides } = await list({ prefix: `carousel-${runId}-` });
   if (slides.length > 0) {
     const sorted = slides
       .sort((a, b) => {

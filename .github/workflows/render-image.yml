@@ -107,12 +107,17 @@ jobs:
               --image-format=jpeg --jpeg-quality=95
           done
 
-      - name: Upload to Vercel Blob
+      - name: Upload to MinIO
         run: |
-          npm install @vercel/blob --no-save
+          npm install @aws-sdk/client-s3 --no-save
           node scripts/upload-image-blob.mjs ${{ github.run_id }} ${{ inputs.type }}
         env:
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+          MINIO_REGION: ${{ secrets.MINIO_REGION }}
+          MINIO_PUBLIC_URL: ${{ secrets.MINIO_PUBLIC_URL }}
 
       - name: Notify schedule webhook
         if: always()

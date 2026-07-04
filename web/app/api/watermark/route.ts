@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put, head } from "@vercel/blob";
-
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
+import { put, head } from "@/lib/storage";
 
 function keyFor(profile: string) {
   return profile === "zaportfolio" ? "settings/watermark-zaportfolio.json" : "settings/watermark.json";
@@ -10,7 +8,7 @@ function keyFor(profile: string) {
 export async function GET(req: NextRequest) {
   const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
   try {
-    const meta = await head(keyFor(profile), { token: TOKEN });
+    const meta = await head(keyFor(profile));
     const res = await fetch(meta.url, { cache: "no-store" });
     return NextResponse.json(await res.json());
   } catch {
@@ -21,8 +19,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const profile = req.nextUrl.searchParams.get("profile") ?? "creavoo";
   const body = await req.json();
-  await put(keyFor(profile), JSON.stringify(body), {
-    access: "public", token: TOKEN, addRandomSuffix: false,
-  });
+  await put(keyFor(profile), JSON.stringify(body));
   return NextResponse.json({ ok: true });
 }

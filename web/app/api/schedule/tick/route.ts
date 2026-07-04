@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { list } from "@vercel/blob";
+import { list } from "@/lib/storage";
 import { loadSettings, loadRecentJobs, saveJob, getDayConfig, type ScheduleJob } from "../route";
 import { sendTelegram } from "@/lib/telegram";
 
-export const maxDuration = 60;
+// Tick menunggu AI generate (bisa 1-3 menit) sebelum trigger render — butuh waktu panjang
+export const maxDuration = 300;
 
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN!;
 const GITHUB_REPO = process.env.GITHUB_REPO ?? "";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? "";
 
@@ -64,7 +64,7 @@ async function processPendingJobs(profile = "creavoo") {
 
       if (job.mediaType === "carousel") {
         // Ambil carousel slides dari Blob
-        const { blobs: slideBlobs } = await list({ prefix: `carousel-${job.runId}-`, token: TOKEN });
+        const { blobs: slideBlobs } = await list({ prefix: `carousel-${job.runId}-` });
         if (!slideBlobs.length) { log.push(`job ${job.runId} (carousel) → blob not ready yet`); continue; }
         const slides = slideBlobs
           .sort((a, b) => {
@@ -76,8 +76,8 @@ async function processPendingJobs(profile = "creavoo") {
         updated = { ...job, status: "done", imageUrls: slides };
       } else {
         // Ambil videoUrl dari Blob
-        const { blobs: videoBlobs } = await list({ prefix: `video-${job.runId}`, token: TOKEN });
-        const { blobs: thumbBlobs } = await list({ prefix: `thumbnail-${job.runId}`, token: TOKEN });
+        const { blobs: videoBlobs } = await list({ prefix: `video-${job.runId}` });
+        const { blobs: thumbBlobs } = await list({ prefix: `thumbnail-${job.runId}` });
         const videoUrl = videoBlobs[0]?.url;
         const thumbnailUrl = thumbBlobs[0]?.url ?? undefined;
         if (!videoUrl) { log.push(`job ${job.runId} (video) → blob not ready yet`); continue; }
@@ -267,12 +267,12 @@ async function runTick(force: boolean, dryrun: boolean, profile: string) {
 
   const [videoScript, carouselScript] = await Promise.all([
     needVideo
-      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective, profile })
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective, profile, stream: false })
           .then((s: Record<string, unknown>) => { log.push(`[VIDEO] ✓ script: "${s.videoTitle}"`); return s; })
           .catch((e: unknown) => { log.push(`[VIDEO] generate error: ${e}`); return null; })
       : Promise.resolve(null),
     needCarousel
-      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective, profile })
+      ? callInternal("/api/generate", "POST", { topic: pickTopic(trendsData.topics ?? []), useKnowledge: useKnowledgeEffective, profile, stream: false })
           .then((s: Record<string, unknown>) => { log.push(`[CAROUSEL] ✓ script: "${s.videoTitle}"`); return s; })
           .catch((e: unknown) => { log.push(`[CAROUSEL] generate error: ${e}`); return null; })
       : Promise.resolve(null),
