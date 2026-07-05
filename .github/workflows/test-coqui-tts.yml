@@ -28,10 +28,11 @@ jobs:
         run: |
           START=$(date +%s)
           pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install --quiet coqui-tts
-          # coqui-tts menarik transformers terbaru yang sudah menghapus isin_mps_friendly
-          # (dibutuhkan layer XTTS/Tortoise) — pin ke versi lama yang masih kompatibel.
-          pip install --quiet "transformers==4.44.2"
+          # Pin ke release coqui-tts yang lebih lama — biarkan pip resolver pasang
+          # transformers versi yang memang di-declare cocok oleh release ini sendiri,
+          # bukan kita tebak manual (percobaan sebelumnya gagal karena versi terbaru
+          # coqui-tts butuh transformers yang belum stabil kompatibilitasnya).
+          pip install --quiet "coqui-tts==0.24.2"
           END=$(date +%s)
           echo "INSTALL_SECONDS=$((END - START))" | tee -a install_time.txt
 
