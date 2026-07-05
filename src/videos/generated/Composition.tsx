@@ -39,7 +39,6 @@ export type GeneratedVideoProps = {
   watermarkHandle?: string;
   watermarkLogo?: string; // filename di public/, e.g. "logo.png"
   profile?: "creavoo" | "zaportfolio";
-  introExpressions?: Expression[];
   outroExpressions?: Expression[];
   introIconFile?: string; // di-download workflow ke public/, fallback introEmoji
 };
@@ -78,7 +77,6 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   watermarkHandle = "",
   watermarkLogo,
   profile = "creavoo",
-  introExpressions,
   outroExpressions,
   introIconFile,
 }) => {
@@ -111,7 +109,6 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
             emoji={introEmoji}
             accent={accentColor}
             profile={profile}
-            expressions={introExpressions}
             iconFile={introIconFile}
           />
         </Series.Sequence>

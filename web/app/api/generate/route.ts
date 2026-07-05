@@ -106,11 +106,10 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
 {
   "videoTitle": "string (maks 45 karakter, catchy, pakai angka jika relevan)",
   "subtitle": "string (maks 65 karakter, hook yang bikin dev scroll stop)",
-  "introEmoji": "string (1 emoji yang paling relevan — boleh emoji teknis: 💻🚀⚡🛠️📦🔧. Dipakai HANYA sebagai fallback kalau introIconSlug kosong)",
-  "introIconSlug": "string (OPSIONAL — HANYA jika topik utama video membahas SATU brand/tool/tech stack spesifik, contoh: video tentang Google, GitHub, Flutter, Node.js, React, Docker, VS Code. Isi slug simple-icons huruf kecil, e.g. 'google', 'github', 'flutter', 'nodedotjs', 'react', 'docker', 'visualstudiocode'. KOSONGKAN kalau topik general/tidak spesifik ke satu brand — jangan mengarang slug)",
+  "introEmoji": "string (1 emoji — DIPAKAI HANYA sebagai fallback kalau introIconSlug kosong, jadi usahakan introIconSlug selalu terisi lebih dulu)",
+  "introIconSlug": "string (WAJIB DIISI kalau videoTitle/topik menyebut NAMA teknologi/bahasa/framework/tool/brand APAPUN — contoh: TypeScript, JavaScript, Python, React, Vue, Flutter, Node.js, Docker, Git, GitHub, VS Code, Figma, Google, Notion, dll. Ini prioritas TINGGI — minimalkan pemakaian emoji generic, cari dulu logo asli brand-nya di simple-icons. Isi slug huruf kecil sesuai simple-icons, contoh: 'typescript', 'javascript', 'python', 'react', 'vuedotjs', 'flutter', 'nodedotjs', 'docker', 'git', 'github', 'visualstudiocode', 'figma', 'google', 'notion'. HANYA kosongkan kalau topik BENAR-BENAR general tanpa nama brand/tech spesifik sama sekali, misal 'Tips produktivitas developer')",
   "accent": "string (pilih hex color sesuai vibe: #6366f1=AI/modern, #3b82f6=tutorial/informatif, #22c55e=produktivitas/sukses, #f97316=energi/tips, #1a3358=profesional/navy, #ef4444=mistakes/bahaya, #eab308=warning/keuangan, #a855f7=personal brand, #64748b=profesional)",
   "layout": "string (pilih: center | side | bold — sesuai konten)",
-  "introExpressions": ["string (WAJIB array, PANJANGNYA HARUS SAMA PERSIS dengan jumlah kalimat di scenes[intro].text — satu ekspresi per kalimat, urut sesuai urutan kalimat. Tiap elemen salah satu: ramah | semangat | mikir | kaget | facepalm | awkward | peace)"],
   "outroExpressions": ["string (WAJIB array, PANJANGNYA HARUS SAMA dengan jumlah kalimat di scenes[outro].text — satu ekspresi per kalimat. Biasanya diakhiri 'peace')"],
   "tips": [
     {
@@ -355,7 +354,6 @@ export async function POST(req: NextRequest) {
       const scenesArr = (data.scenes as { id: string; text: string }[]) ?? [];
       const sceneText = (id: string) => scenesArr.find((s) => s.id === id)?.text ?? "";
 
-      data.introExpressions = normalize(data.introExpressions, countSentences(sceneText("intro")), "semangat");
       data.outroExpressions = normalize(data.outroExpressions, countSentences(sceneText("outro")), "peace");
       (data.tips as { expressions?: unknown }[]).forEach((tip, i) => {
         tip.expressions = normalize(tip.expressions, countSentences(sceneText(`tip-${i + 1}`)), "ramah");

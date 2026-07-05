@@ -6,7 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { CharacterAvatar, pickExpressionAtFrame, type Expression } from "../../../shared/CharacterAvatar";
+import { CharacterAvatar } from "../../../shared/CharacterAvatar";
 import { TipIcon } from "./TipMedia";
 
 type Props = {
@@ -16,11 +16,10 @@ type Props = {
   emoji: string;
   accent: string;
   profile?: "creavoo" | "zaportfolio";
-  expressions?: Expression[];
   iconFile?: string;
 };
 
-export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, accent, profile = "creavoo", expressions, iconFile }) => {
+export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, accent, profile = "creavoo", iconFile }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -116,9 +115,7 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
             )}
           </div>
         </AbsoluteFill>
-        {pickExpressionAtFrame(expressions, frame, duration) && (
-          <CharacterAvatar expression={pickExpressionAtFrame(expressions, frame, duration)!} />
-        )}
+        <CharacterAvatar expression="semangat" />
       </AbsoluteFill>
     );
   }
