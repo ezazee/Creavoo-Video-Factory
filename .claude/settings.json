@@ -60,7 +60,9 @@
       "Bash(pkill -f \"chrome-headless\")",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\('videoTitle:',j.videoTitle\\);console.log\\('introIconSlug:',j.introIconSlug\\);console.log\\('introExpression:',j.introExpression\\);console.log\\('outroExpression:',j.outroExpression\\);console.log\\('tips expressions:', j.tips.map\\(t=>t.expression\\)\\);}\\)\")",
       "Bash(curl -s -o /dev/null -w \"HTTP:%{http_code} content-type:%{content_type}\\\\n\" \"https://cdn.simpleicons.org/flutter\")",
-      "Bash(pkill -f \"next-server\")"
+      "Bash(pkill -f \"next-server\")",
+      "Bash(netstat -ano)",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "\\tmp"

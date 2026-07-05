@@ -110,14 +110,14 @@ Kamu HARUS mengembalikan JSON valid (tanpa markdown, hanya JSON murni):
   "introIconSlug": "string (OPSIONAL — HANYA jika topik utama video membahas SATU brand/tool/tech stack spesifik, contoh: video tentang Google, GitHub, Flutter, Node.js, React, Docker, VS Code. Isi slug simple-icons huruf kecil, e.g. 'google', 'github', 'flutter', 'nodedotjs', 'react', 'docker', 'visualstudiocode'. KOSONGKAN kalau topik general/tidak spesifik ke satu brand — jangan mengarang slug)",
   "accent": "string (pilih hex color sesuai vibe: #6366f1=AI/modern, #3b82f6=tutorial/informatif, #22c55e=produktivitas/sukses, #f97316=energi/tips, #1a3358=profesional/navy, #ef4444=mistakes/bahaya, #eab308=warning/keuangan, #a855f7=personal brand, #64748b=profesional)",
   "layout": "string (pilih: center | side | bold — sesuai konten)",
-  "introExpression": "string (WAJIB salah satu: ramah | semangat | mikir | kaget | facepalm | awkward | peace — ekspresi karakter di scene intro, biasanya 'ramah' atau 'semangat')",
-  "outroExpression": "string (WAJIB salah satu dari 7 pilihan di atas — ekspresi penutup, biasanya 'peace')",
+  "introExpressions": ["string (WAJIB array, PANJANGNYA HARUS SAMA PERSIS dengan jumlah kalimat di scenes[intro].text — satu ekspresi per kalimat, urut sesuai urutan kalimat. Tiap elemen salah satu: ramah | semangat | mikir | kaget | facepalm | awkward | peace)"],
+  "outroExpressions": ["string (WAJIB array, PANJANGNYA HARUS SAMA dengan jumlah kalimat di scenes[outro].text — satu ekspresi per kalimat. Biasanya diakhiri 'peace')"],
   "tips": [
     {
       "title": "string (maks 35 karakter, nama tip/poin singkat dan kuat)",
       "subtitle": "string (maks 80 karakter, manfaat atau konteks singkat — boleh pakai istilah teknis)",
       "emoji": "string (1 emoji)",
-      "expression": "string (WAJIB salah satu: ramah | semangat | mikir | kaget | facepalm | awkward | peace — pilih sesuai ISI tip: 'kaget' untuk fakta/angka mengejutkan, 'facepalm' untuk kesalahan umum, 'mikir' untuk penjelasan konsep, 'semangat' untuk tips yang paling worth it, 'awkward' untuk cerita pengalaman pribadi yang relate, 'ramah' untuk poin netral, 'peace' jarang dipakai di tips)",
+      "expressions": ["string (WAJIB array, PANJANGNYA HARUS SAMA PERSIS dengan jumlah kalimat narasi tip ini di scenes[] — SATU EKSPRESI PER KALIMAT, ganti sesuai isi kalimat itu spesifik, BUKAN satu ekspresi sama untuk semua kalimat dalam tip. Tiap elemen salah satu: ramah | semangat | mikir | kaget | facepalm | awkward | peace. Contoh kalau kalimat pertama netral dan kalimat kedua reveal fakta mengejutkan: ['ramah', 'kaget'])"],
       ${VISUAL_SCHEMA}
     }
   ],
@@ -338,14 +338,28 @@ export async function POST(req: NextRequest) {
     data.hashtags = (data.hashtags as string[]).map((h) => h.replace(/^#/, "")).slice(0, 15);
     data.knowledgeUsed = !isZap && useKnowledge;
 
-    // Validasi field expression karakter chibi (zaportfolio only) — fallback ke "ramah" kalau AI kasih nilai di luar 7 pilihan
+    // Validasi expressions karakter chibi (zaportfolio only) — panjang array WAJIB
+    // sama dengan jumlah kalimat narasi scene terkait, supaya ekspresi ganti pas
+    // per kalimat saat render (bukan cuma sekali per scene).
     if (isZap) {
       const VALID_EXPRESSIONS = ["ramah", "semangat", "mikir", "kaget", "facepalm", "awkward", "peace"];
-      if (!VALID_EXPRESSIONS.includes(data.introExpression as string)) data.introExpression = "semangat";
-      if (!VALID_EXPRESSIONS.includes(data.outroExpression as string)) data.outroExpression = "peace";
-      for (const tip of data.tips as { expression?: string }[]) {
-        if (!VALID_EXPRESSIONS.includes(tip.expression as string)) tip.expression = "ramah";
-      }
+      const countSentences = (text: string): number =>
+        text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean).length || 1;
+      const normalize = (arr: unknown, count: number, fallback: string): string[] => {
+        const clean = (Array.isArray(arr) ? arr : []).filter((e): e is string => VALID_EXPRESSIONS.includes(e as string));
+        if (clean.length === 0) clean.push(fallback);
+        while (clean.length < count) clean.push(clean[clean.length - 1]);
+        return clean.slice(0, count);
+      };
+
+      const scenesArr = (data.scenes as { id: string; text: string }[]) ?? [];
+      const sceneText = (id: string) => scenesArr.find((s) => s.id === id)?.text ?? "";
+
+      data.introExpressions = normalize(data.introExpressions, countSentences(sceneText("intro")), "semangat");
+      data.outroExpressions = normalize(data.outroExpressions, countSentences(sceneText("outro")), "peace");
+      (data.tips as { expressions?: unknown }[]).forEach((tip, i) => {
+        tip.expressions = normalize(tip.expressions, countSentences(sceneText(`tip-${i + 1}`)), "ramah");
+      });
     }
 
     // Paksa handle sesuai profile — AI kadang nulis handle profile lain

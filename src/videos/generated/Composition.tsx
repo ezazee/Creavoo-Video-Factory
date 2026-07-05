@@ -22,7 +22,7 @@ export type TipData = {
   toolUrl?: string;
   iconFile?: string;       // di-download workflow ke public/, fallback emoji
   screenshotFile?: string; // di-download workflow ke public/, opsional
-  expression?: Expression; // zaportfolio only — ekspresi karakter chibi
+  expressions?: Expression[]; // zaportfolio only — 1 ekspresi per kalimat narasi tip ini
 };
 
 export type VideoLayout = "center" | "side" | "bold" | "auto";
@@ -39,8 +39,8 @@ export type GeneratedVideoProps = {
   watermarkHandle?: string;
   watermarkLogo?: string; // filename di public/, e.g. "logo.png"
   profile?: "creavoo" | "zaportfolio";
-  introExpression?: Expression;
-  outroExpression?: Expression;
+  introExpressions?: Expression[];
+  outroExpressions?: Expression[];
   introIconFile?: string; // di-download workflow ke public/, fallback introEmoji
 };
 
@@ -48,7 +48,7 @@ export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
 
-type TipSceneProps = { duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; iconFile?: string; screenshotFile?: string; profile?: "creavoo" | "zaportfolio"; expression?: Expression };
+type TipSceneProps = { duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; iconFile?: string; screenshotFile?: string; profile?: "creavoo" | "zaportfolio"; expressions?: Expression[] };
 
 const TIP_SCENE_MAP: Record<"center" | "side" | "bold", React.FC<TipSceneProps>> = {
   center: TipScene,
@@ -78,8 +78,8 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   watermarkHandle = "",
   watermarkLogo,
   profile = "creavoo",
-  introExpression,
-  outroExpression,
+  introExpressions,
+  outroExpressions,
   introIconFile,
 }) => {
   const durations =
@@ -111,7 +111,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
             emoji={introEmoji}
             accent={accentColor}
             profile={profile}
-            expression={introExpression}
+            expressions={introExpressions}
             iconFile={introIconFile}
           />
         </Series.Sequence>
@@ -132,7 +132,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
                 iconFile={tip.iconFile}
                 screenshotFile={tip.screenshotFile}
                 profile={profile}
-                expression={tip.expression}
+                expressions={tip.expressions}
               />
             </Series.Sequence>
           );
@@ -145,7 +145,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
             accent={isZaportfolio ? "#1a3358" : accentColor}
             ctaText={ctaText}
             profile={profile}
-            expression={outroExpression}
+            expressions={outroExpressions}
           />
         </Series.Sequence>
       </Series>

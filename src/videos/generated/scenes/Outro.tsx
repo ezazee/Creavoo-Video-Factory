@@ -6,7 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { CharacterAvatar, type Expression } from "../../../shared/CharacterAvatar";
+import { CharacterAvatar, pickExpressionAtFrame, type Expression } from "../../../shared/CharacterAvatar";
 
 type Props = {
   duration: number;
@@ -14,10 +14,10 @@ type Props = {
   accent: string;
   ctaText: string;
   profile?: "creavoo" | "zaportfolio";
-  expression?: Expression;
+  expressions?: Expression[];
 };
 
-export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profile = "creavoo", expression }) => {
+export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profile = "creavoo", expressions }) => {
   const navy = "#1a3358";
   const isZap = profile === "zaportfolio";
   const frame = useCurrentFrame();
@@ -38,6 +38,13 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profil
     <AbsoluteFill style={{ opacity: 1 - exit }}>
       <AbsoluteFill className="items-center justify-center">
         <div className="flex flex-col items-center gap-8 px-10">
+          {isZap && pickExpressionAtFrame(expressions, frame, duration) && (
+            <CharacterAvatar
+              variant="inline"
+              expression={pickExpressionAtFrame(expressions, frame, duration)!}
+              size={200}
+            />
+          )}
           <p
             className="font-black text-zinc-900 text-center"
             style={{
@@ -100,7 +107,6 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profil
           )}
         </div>
       </AbsoluteFill>
-      {isZap && expression && <CharacterAvatar expression={expression} />}
     </AbsoluteFill>
   );
 };
