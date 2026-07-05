@@ -26,43 +26,57 @@ export function pickExpressionAtFrame(
  * Karakter chibi personal Zaportfolio — ganti ekspresi mengikuti kalimat yang
  * lagi diucapkan dalam satu scene.
  *
- * variant="overlay" (default): absolute, tengah-bawah layar — dipakai di
- * intro/tip scenes.
- * variant="inline": bagian dari flex layout normal (dipakai di Outro, di
- * atas blok Recap, bukan floating overlay).
+ * variant="overlay" (default): absolute, tengah-bawah layar — dipakai di tip
+ * scenes, PNG langsung tanpa bingkai.
+ * variant="inline": bagian dari flex layout normal (dipakai di Intro di atas
+ * tag "ZAPORTFOLIO", dan Outro di atas "Recap") — pakai bingkai bulat.
+ *
+ * shape="circle": bingkai bulat putih + border navy (Intro & Outro).
+ * shape="none" (default): PNG transparan langsung, tanpa bingkai (tip scenes).
  */
 export const CharacterAvatar: React.FC<{
   expression: Expression;
   size?: number;
   variant?: "overlay" | "inline";
-}> = ({ expression, size = 260, variant = "overlay" }) => {
+  shape?: "circle" | "none";
+}> = ({ expression, size = 340, variant = "overlay", shape = "none" }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const in_ = spring({ frame, fps, config: { damping: 14, mass: 0.7 } });
   const bob = Math.sin(frame * 0.09) * 5;
 
-  const bubble = (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        borderRadius: "50%",
-        background: "#ffffff",
-        border: "5px solid #1a3358",
-        boxShadow: "0 12px 36px rgba(26,51,88,0.4)",
-        overflow: "hidden",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Img
-        src={staticFile(`characters/zaportfolio/${expression}.png`)}
-        style={{ width: "112%", height: "112%", objectFit: "cover" }}
-      />
-    </div>
+  const rawImage = (
+    <Img
+      src={staticFile(`characters/zaportfolio/${expression}.png`)}
+      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+    />
   );
+
+  const content =
+    shape === "circle" ? (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "50%",
+          background: "#ffffff",
+          border: "5px solid #1a3358",
+          boxShadow: "0 12px 36px rgba(26,51,88,0.4)",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Img
+          src={staticFile(`characters/zaportfolio/${expression}.png`)}
+          style={{ width: "112%", height: "112%", objectFit: "cover" }}
+        />
+      </div>
+    ) : (
+      rawImage
+    );
 
   if (variant === "inline") {
     return (
@@ -74,7 +88,7 @@ export const CharacterAvatar: React.FC<{
           transform: `scale(${0.7 + in_ * 0.3}) translateY(${bob}px)`,
         }}
       >
-        {bubble}
+        {content}
       </div>
     );
   }
@@ -91,7 +105,7 @@ export const CharacterAvatar: React.FC<{
         transform: `translateX(-50%) scale(${0.7 + in_ * 0.3}) translateY(${bob}px)`,
       }}
     >
-      {bubble}
+      {content}
     </div>
   );
 };

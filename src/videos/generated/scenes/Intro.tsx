@@ -43,6 +43,8 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
       <AbsoluteFill style={{ opacity: 1 - exit }}>
         <AbsoluteFill className="items-center justify-center">
           <div className="flex flex-col items-center gap-10 px-14">
+            <CharacterAvatar expression="semangat" variant="inline" shape="circle" size={200} />
+
             {/* Tag pill */}
             <div
               style={{
@@ -115,7 +117,6 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
             )}
           </div>
         </AbsoluteFill>
-        <CharacterAvatar expression="semangat" />
       </AbsoluteFill>
     );
   }

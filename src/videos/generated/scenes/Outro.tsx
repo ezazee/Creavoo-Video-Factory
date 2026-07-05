@@ -41,6 +41,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profil
           {isZap && pickExpressionAtFrame(expressions, frame, duration) && (
             <CharacterAvatar
               variant="inline"
+              shape="circle"
               expression={pickExpressionAtFrame(expressions, frame, duration)!}
               size={200}
             />
