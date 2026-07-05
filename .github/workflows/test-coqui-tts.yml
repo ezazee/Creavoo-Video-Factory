@@ -31,7 +31,7 @@ jobs:
           pip install --quiet coqui-tts
           # coqui-tts menarik transformers terbaru yang sudah menghapus isin_mps_friendly
           # (dibutuhkan layer XTTS/Tortoise) — pin ke versi lama yang masih kompatibel.
-          pip install --quiet "transformers==4.40.2"
+          pip install --quiet "transformers==4.44.2"
           END=$(date +%s)
           echo "INSTALL_SECONDS=$((END - START))" | tee -a install_time.txt
 
