@@ -33,6 +33,9 @@ jobs:
           # bukan kita tebak manual (percobaan sebelumnya gagal karena versi terbaru
           # coqui-tts butuh transformers yang belum stabil kompatibilitasnya).
           pip install --quiet "coqui-tts==0.24.2"
+          # spacy (dependency coqui-tts untuk tokenisasi) butuh click tapi tidak
+          # otomatis ke-install oleh resolver pip di kombinasi versi ini.
+          pip install --quiet click
           END=$(date +%s)
           echo "INSTALL_SECONDS=$((END - START))" | tee -a install_time.txt
 
