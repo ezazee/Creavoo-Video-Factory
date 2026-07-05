@@ -35,7 +35,8 @@
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(JSON.stringify\\({enabled:j.settings.enabled,autoTikTok:j.settings.autoTikTok,autoInstagram:j.settings.autoInstagram}\\)\\)}\\)\")",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const r=j.workflow_runs[0];console.log\\(JSON.stringify\\({id:r.id,status:r.status,conclusion:r.conclusion,html_url:r.html_url}\\)\\)}\\)\")",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(JSON.stringify\\({status:j.status,conclusion:j.conclusion}\\)\\)}\\)\")",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);for\\(const job of j.jobs\\){console.log\\('JOB:',job.name, job.conclusion\\);for\\(const s of job.steps\\){console.log\\(' -', s.name, s.conclusion, s.number\\)}}}\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);for\\(const job of j.jobs\\){console.log\\('JOB:',job.name, job.conclusion\\);for\\(const s of job.steps\\){console.log\\(' -', s.name, s.conclusion, s.number\\)}}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const r=j.workflow_runs[0];console.log\\(JSON.stringify\\({id:r.id,status:r.status}\\)\\)}\\)\")"
     ]
   }
 }
