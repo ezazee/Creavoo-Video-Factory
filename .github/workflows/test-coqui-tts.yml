@@ -27,7 +27,7 @@ jobs:
       - name: Install torch (CPU) + coqui-tts — timed
         run: |
           START=$(date +%s)
-          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet coqui-tts
           END=$(date +%s)
           echo "INSTALL_SECONDS=$((END - START))" | tee -a install_time.txt

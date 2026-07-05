@@ -32,7 +32,10 @@
       "Bash(node -e \"import\\('./scripts/lib/storage.mjs'\\).then\\(\\(\\)=>console.log\\('storage.mjs OK'\\)\\)\")",
       "Bash(rm -rf .next)",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\('videoTitle:', j.videoTitle\\);console.log\\('tips count:', j.tips?.length\\);console.log\\('scenes count:', j.scenes?.length\\);console.log\\('layout:', j.layout\\);console.log\\('error:', j.error ?? 'none'\\);}catch\\(e\\){console.log\\('PARSE ERROR:', e.message\\);console.log\\('RAW \\(first 500\\):', d.slice\\(0,500\\)\\);}}\\)\")",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(JSON.stringify\\({enabled:j.settings.enabled,autoTikTok:j.settings.autoTikTok,autoInstagram:j.settings.autoInstagram}\\)\\)}\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(JSON.stringify\\({enabled:j.settings.enabled,autoTikTok:j.settings.autoTikTok,autoInstagram:j.settings.autoInstagram}\\)\\)}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);const r=j.workflow_runs[0];console.log\\(JSON.stringify\\({id:r.id,status:r.status,conclusion:r.conclusion,html_url:r.html_url}\\)\\)}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(JSON.stringify\\({status:j.status,conclusion:j.conclusion}\\)\\)}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);for\\(const job of j.jobs\\){console.log\\('JOB:',job.name, job.conclusion\\);for\\(const s of job.steps\\){console.log\\(' -', s.name, s.conclusion, s.number\\)}}}\\)\")"
     ]
   }
 }
