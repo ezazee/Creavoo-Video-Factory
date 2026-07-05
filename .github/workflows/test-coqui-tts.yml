@@ -54,6 +54,8 @@ jobs:
           tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
           t1 = time.time()
           print(f"MODEL_LOAD_SECONDS={t1 - t0:.1f}")
+          print(f"SUPPORTED_LANGUAGES={tts.languages}")
+          print(f"INDONESIAN_SUPPORTED={'id' in tts.languages}")
 
           # Teks representatif — mirip panjang 1 scene asli (2-3 kalimat pendek)
           text = "Lima trik Git yang jarang diketahui developer. Kalau kamu masih pakai cara manual, kamu bakal kaget lihat ini. Simak sampai habis ya."
