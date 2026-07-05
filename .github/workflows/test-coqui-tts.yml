@@ -37,6 +37,8 @@ jobs:
           echo "INSTALL_SECONDS=$((END - START))" | tee -a install_time.txt
 
       - name: Download XTTS-v2 model + synthesize scene teks pendek (cold run) — timed
+        env:
+          COQUI_TOS_AGREED: "1"
         run: |
           python3 - <<'PYEOF'
           import time, torch
