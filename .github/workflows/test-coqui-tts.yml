@@ -27,7 +27,10 @@ jobs:
       - name: Install torch (CPU) + coqui-tts — timed
         run: |
           START=$(date +%s)
-          pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          # torch>=2.6 mengubah default weights_only=True saat torch.load, yang
+          # bentrok dengan cara coqui-tts==0.24.2 (ditulis sebelum perubahan itu)
+          # me-load checkpoint XTTS. Pin ke versi sebelum 2.6.
+          pip install --quiet "torch==2.5.1" "torchaudio==2.5.1" --index-url https://download.pytorch.org/whl/cpu
           # Pin ke release coqui-tts yang lebih lama — biarkan pip resolver pasang
           # transformers versi yang memang di-declare cocok oleh release ini sendiri,
           # bukan kita tebak manual (percobaan sebelumnya gagal karena versi terbaru
