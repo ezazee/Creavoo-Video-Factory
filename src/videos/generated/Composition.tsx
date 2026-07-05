@@ -10,6 +10,7 @@ import { Outro } from "./scenes/Outro";
 import { SCENE_IDS, audioPath } from "./voiceover";
 import type { SceneId } from "./voiceover";
 import type { VisualData } from "./scenes/VisualBlock";
+import type { Expression } from "../../shared/CharacterAvatar";
 
 export type TipData = {
   title: string;
@@ -21,6 +22,7 @@ export type TipData = {
   toolUrl?: string;
   iconFile?: string;       // di-download workflow ke public/, fallback emoji
   screenshotFile?: string; // di-download workflow ke public/, opsional
+  expression?: Expression; // zaportfolio only — ekspresi karakter chibi
 };
 
 export type VideoLayout = "center" | "side" | "bold" | "auto";
@@ -37,13 +39,16 @@ export type GeneratedVideoProps = {
   watermarkHandle?: string;
   watermarkLogo?: string; // filename di public/, e.g. "logo.png"
   profile?: "creavoo" | "zaportfolio";
+  introExpression?: Expression;
+  outroExpression?: Expression;
+  introIconFile?: string; // di-download workflow ke public/, fallback introEmoji
 };
 
 export const DEFAULT_ACCENT = "#6366f1";
 
 export const FALLBACK_DURATIONS = [150, 210, 210, 210, 210, 210, 150];
 
-type TipSceneProps = { duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; iconFile?: string; screenshotFile?: string; profile?: "creavoo" | "zaportfolio" };
+type TipSceneProps = { duration: number; number: number; title: string; subtitle: string; emoji: string; accent: string; bullets?: string[]; visual?: VisualData; iconFile?: string; screenshotFile?: string; profile?: "creavoo" | "zaportfolio"; expression?: Expression };
 
 const TIP_SCENE_MAP: Record<"center" | "side" | "bold", React.FC<TipSceneProps>> = {
   center: TipScene,
@@ -73,6 +78,9 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
   watermarkHandle = "",
   watermarkLogo,
   profile = "creavoo",
+  introExpression,
+  outroExpression,
+  introIconFile,
 }) => {
   const durations =
     sceneDurations.length === SCENE_IDS.length
@@ -103,6 +111,8 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
             emoji={introEmoji}
             accent={accentColor}
             profile={profile}
+            expression={introExpression}
+            iconFile={introIconFile}
           />
         </Series.Sequence>
 
@@ -122,6 +132,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
                 iconFile={tip.iconFile}
                 screenshotFile={tip.screenshotFile}
                 profile={profile}
+                expression={tip.expression}
               />
             </Series.Sequence>
           );
@@ -134,6 +145,7 @@ export const GeneratedVideoComposition: React.FC<GeneratedVideoProps> = ({
             accent={isZaportfolio ? "#1a3358" : accentColor}
             ctaText={ctaText}
             profile={profile}
+            expression={outroExpression}
           />
         </Series.Sequence>
       </Series>

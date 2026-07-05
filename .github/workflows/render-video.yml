@@ -138,6 +138,11 @@ jobs:
               if fetch(logo_url, f"public/watermark-logo.{ext}"):
                   props["watermarkLogo"] = f"watermark-logo.{ext}"
 
+          # Icon brand asli (simple-icons) untuk intro — hanya kalau topik spesifik ke satu brand/tech
+          intro_slug = (props.get("introIconSlug") or "").strip().lower()
+          if intro_slug and fetch(f"https://cdn.simpleicons.org/{intro_slug}", "public/intro-icon.svg"):
+              props["introIconFile"] = "intro-icon.svg"
+
           # Icon brand asli (simple-icons) + screenshot tool (thum.io) per tip
           for i, tip in enumerate(props.get("tips", [])):
               slug = (tip.get("iconSlug") or "").strip().lower()

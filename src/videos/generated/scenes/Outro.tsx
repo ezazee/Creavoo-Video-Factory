@@ -6,6 +6,7 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { CharacterAvatar, type Expression } from "../../../shared/CharacterAvatar";
 
 type Props = {
   duration: number;
@@ -13,9 +14,10 @@ type Props = {
   accent: string;
   ctaText: string;
   profile?: "creavoo" | "zaportfolio";
+  expression?: Expression;
 };
 
-export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profile = "creavoo" }) => {
+export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profile = "creavoo", expression }) => {
   const navy = "#1a3358";
   const isZap = profile === "zaportfolio";
   const frame = useCurrentFrame();
@@ -98,6 +100,7 @@ export const Outro: React.FC<Props> = ({ duration, tips, accent, ctaText, profil
           )}
         </div>
       </AbsoluteFill>
+      {isZap && expression && <CharacterAvatar expression={expression} />}
     </AbsoluteFill>
   );
 };

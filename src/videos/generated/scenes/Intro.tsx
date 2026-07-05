@@ -6,6 +6,8 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { CharacterAvatar, type Expression } from "../../../shared/CharacterAvatar";
+import { TipIcon } from "./TipMedia";
 
 type Props = {
   duration: number;
@@ -14,9 +16,11 @@ type Props = {
   emoji: string;
   accent: string;
   profile?: "creavoo" | "zaportfolio";
+  expression?: Expression;
+  iconFile?: string;
 };
 
-export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, accent, profile = "creavoo" }) => {
+export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, accent, profile = "creavoo", expression, iconFile }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -51,7 +55,7 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
                 className="flex items-center gap-4 px-10 py-4 rounded-2xl"
                 style={{ background: `${navy}12`, border: `2px solid ${navy}25` }}
               >
-                <span style={{ fontSize: 52 }}>{emoji}</span>
+                <TipIcon emoji={emoji} iconFile={iconFile} size={44} accent={navy} />
                 <div
                   style={{
                     width: 3,
@@ -112,6 +116,7 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
             )}
           </div>
         </AbsoluteFill>
+        {expression && <CharacterAvatar expression={expression} />}
       </AbsoluteFill>
     );
   }
@@ -122,14 +127,11 @@ export const Intro: React.FC<Props> = ({ duration, videoTitle, subtitle, emoji, 
         <div className="flex flex-col items-center gap-8 px-12">
           <div
             style={{
-              fontSize: 180,
-              lineHeight: 1,
               opacity: emojiIn,
               transform: `scale(${0.5 + emojiIn * 0.5}) translateY(${emojiFloat}px)`,
-              filter: `drop-shadow(0 0 40px ${accent}99)`,
             }}
           >
-            {emoji}
+            <TipIcon emoji={emoji} iconFile={iconFile} size={150} accent={accent} style={{ fontSize: 180 }} />
           </div>
 
           <div

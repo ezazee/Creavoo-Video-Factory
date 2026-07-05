@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { VisualBlock, type VisualData } from "./VisualBlock";
 import { TipIcon, ScreenshotFrame } from "./TipMedia";
+import { CharacterAvatar, type Expression } from "../../../shared/CharacterAvatar";
 
 type Props = {
   duration: number;
@@ -21,10 +22,11 @@ type Props = {
   iconFile?: string;
   screenshotFile?: string;
   profile?: "creavoo" | "zaportfolio";
+  expression?: Expression;
 };
 
 export const TipSceneSide: React.FC<Props> = ({
-  duration, number, title, subtitle, emoji, accent, bullets, visual, iconFile, screenshotFile, profile = "creavoo",
+  duration, number, title, subtitle, emoji, accent, bullets, visual, iconFile, screenshotFile, profile = "creavoo", expression,
 }) => {
   const isZap = profile === "zaportfolio";
   const frame = useCurrentFrame();
@@ -123,6 +125,8 @@ export const TipSceneSide: React.FC<Props> = ({
           </div>
         )}
       </div>
+
+      {isZap && expression && <CharacterAvatar expression={expression} />}
     </AbsoluteFill>
   );
 };
