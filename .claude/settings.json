@@ -30,7 +30,9 @@
       "PowerShell(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep 1; if \\(Get-NetTCPConnection -LocalPort 3911 -State Listen -ErrorAction SilentlyContinue\\) { \"still listening\" } else { \"port 3911 free\" })",
       "Bash(curl -sI \"https://minio-api.zaportfolio.my.id/\")",
       "Bash(node -e \"import\\('./scripts/lib/storage.mjs'\\).then\\(\\(\\)=>console.log\\('storage.mjs OK'\\)\\)\")",
-      "Bash(rm -rf .next)"
+      "Bash(rm -rf .next)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\('videoTitle:', j.videoTitle\\);console.log\\('tips count:', j.tips?.length\\);console.log\\('scenes count:', j.scenes?.length\\);console.log\\('layout:', j.layout\\);console.log\\('error:', j.error ?? 'none'\\);}catch\\(e\\){console.log\\('PARSE ERROR:', e.message\\);console.log\\('RAW \\(first 500\\):', d.slice\\(0,500\\)\\);}}\\)\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(JSON.stringify\\({enabled:j.settings.enabled,autoTikTok:j.settings.autoTikTok,autoInstagram:j.settings.autoInstagram}\\)\\)}\\)\")"
     ]
   }
 }
