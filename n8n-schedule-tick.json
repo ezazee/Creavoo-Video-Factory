@@ -1,0 +1,436 @@
+{
+  "name": "Video Factory — Full Pipeline (ikut jadwal per profile)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000001",
+      "name": "Tiap Jam (menit 0)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-420, 240]
+    },
+
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/schedule",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "profile", "value": "creavoo" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000020",
+      "name": "Cek Jadwal Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-180, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gate: hanya lanjut kalau JAM SEKARANG (WIB) memang terjadwal untuk profile ini\n// sesuai settings di halaman Schedule web (dayConfigs per hari — jadwal rekomendasi).\n// Kalau tidak terjadwal → return [] → seluruh cabang berhenti, tidak generate apa-apa.\nconst d = $input.first().json;\nconst settings = d.settings ?? {};\nconst jobs = d.jobs ?? [];\n\nconst now = new Date();\nconst wibHour = Number(now.toLocaleString(\"en-US\", { timeZone: \"Asia/Jakarta\", hour: \"2-digit\", hour12: false })) % 24;\nconst wibDay = new Date(now.getTime() + 7 * 3600 * 1000).getUTCDay();\n\nif (!settings.enabled) return [];\nif (!(settings.days ?? []).includes(wibDay)) return [];\n\nconst dayConfig = settings.dayConfigs?.[wibDay] ?? {\n  times: settings.times ?? [], carouselTimes: [],\n  voice: settings.voice, useKnowledge: settings.useKnowledge, igShareToFeed: settings.igShareToFeed,\n};\n\nlet isVideoTime = (dayConfig.times ?? []).includes(wibHour);\nlet isCarouselTime = (dayConfig.carouselTimes ?? []).includes(wibHour);\nif (!isVideoTime && !isCarouselTime) return [];\n\n// Anti-duplikat: kalau job dengan tipe sama sudah dibuat < 55 menit lalu, skip\nconst cutoff = Date.now() - 55 * 60 * 1000;\nconst recent = (t) => jobs.some(j => j.mediaType === t && new Date(j.createdAt).getTime() > cutoff);\nif (isVideoTime && recent(\"video\")) isVideoTime = false;\nif (isCarouselTime && recent(\"carousel\")) isCarouselTime = false;\nif (!isVideoTime && !isCarouselTime) return [];\n\n// Jadwal rekomendasi tidak pernah menumpuk video & carousel di jam sama —\n// tapi kalau terjadi, video didahulukan.\nconst mediaType = isVideoTime ? \"video\" : \"carousel\";\nreturn [{ json: {\n  mediaType,\n  voice: dayConfig.voice ?? \"id-ID-ArdiNeural\",\n  useKnowledge: dayConfig.useKnowledge ?? true,\n  igShareToFeed: dayConfig.igShareToFeed ?? true,\n  autoTikTok: settings.autoTikTok ?? false,\n  autoInstagram: settings.autoInstagram ?? false,\n} }];"
+      },
+      "id": "b1000000-0000-0000-0000-000000000021",
+      "name": "Gate Jadwal Creavoo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [40, 60]
+    },
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/trends",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "profile", "value": "creavoo" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000002",
+      "name": "Trending Topik Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Topik acak dari trending — server sudah memfilter topik yang pernah dibuat\n// (memory AI), jadi selalu beda dengan konten sebelumnya.\nconst topics = $input.first().json.topics ?? [];\nif (!topics.length) throw new Error(\"Trends Creavoo kosong\");\nconst gate = $(\"Gate Jadwal Creavoo\").first().json;\nreturn [{ json: { ...gate, topic: topics[Math.floor(Math.random() * topics.length)], profile: \"creavoo\" } }];"
+      },
+      "id": "b1000000-0000-0000-0000-000000000003",
+      "name": "Pilih Topik Creavoo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 60]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://creavoo-factory.vercel.app/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic: $json.topic, profile: \"creavoo\", useKnowledge: $json.useKnowledge }) }}",
+        "options": {
+          "timeout": 280000,
+          "response": { "response": { "neverError": true, "responseFormat": "text" } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000004",
+      "name": "Generate Script Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 60]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse SSE /api/generate → event \"done\" = script final. Event \"error\" = AI\n// menolak (misal judul duplikat dengan konten lama).\nconst raw = String($input.first().json.data ?? \"\");\nlet script = null, errMsg = null;\nfor (const line of raw.split(\"\\n\")) {\n  const t = line.trim();\n  if (!t.startsWith(\"data:\")) continue;\n  try {\n    const evt = JSON.parse(t.slice(5).trim());\n    if (evt.type === \"done\") script = evt.data;\n    if (evt.type === \"error\") errMsg = evt.message;\n  } catch { /* token progress */ }\n}\n\nconst pick = $(\"Pilih Topik Creavoo\").first().json;\nif (!script) {\n  return [{ json: { ok: false, profile: \"creavoo\", topic: pick.topic, error: errMsg ?? \"AI tidak mengembalikan script\" } }];\n}\n\n// Body render sesuai tipe dari jadwal. Auto-upload flags dari settings profile —\n// setelah render selesai, server otomatis publish ke akun sesuai profile + kirim\n// SATU notif Telegram \"Notif Post baru nih!\" berisi link post.\nconst base = \"https://creavoo-factory.vercel.app\";\nlet renderUrl, renderBody;\nif (pick.mediaType === \"video\") {\n  renderUrl = base + \"/api/render\";\n  renderBody = {\n    ...script, layout: \"auto\", voice: pick.voice,\n    watermarkHandle: \"\", watermarkLogoUrl: null, profile: \"creavoo\",\n    autoTikTok: pick.autoTikTok, autoInstagram: pick.autoInstagram, igShareToFeed: pick.igShareToFeed,\n  };\n} else {\n  renderUrl = base + \"/api/render-image\";\n  renderBody = {\n    ...script, layout: \"auto\", type: \"carousel\",\n    totalSlides: (script.tips?.length ?? 5) + 2, style: \"creavoo\",\n    watermarkHandle: \"\", watermarkLogoUrl: null,\n    autoInstagram: pick.autoInstagram,\n  };\n}\nreturn [{ json: { ok: true, profile: \"creavoo\", mediaType: pick.mediaType, topic: pick.topic, title: script.videoTitle, renderUrl, renderBody } }];"
+      },
+      "id": "b1000000-0000-0000-0000-000000000005",
+      "name": "Parse & Siapkan Render Creavoo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 60]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2000000-0000-0000-0000-000000000001",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1000000-0000-0000-0000-000000000006",
+      "name": "Script Creavoo OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1140, 60]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.renderUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.renderBody) }}",
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000007",
+      "name": "Trigger Render Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, -40]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8104417369:AAGv48cCyw06137a-D9O3eYTQMbFY_ZiNKI/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: \"8145595315\", text: \"❌ [Creavoo] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "b1000000-0000-0000-0000-000000000009",
+      "name": "Notif Gagal Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 160]
+    },
+
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/schedule",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "profile", "value": "zaportfolio" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000030",
+      "name": "Cek Jadwal Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-180, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gate jadwal Zaportfolio — sama seperti Creavoo, ikut dayConfigs profile ini.\nconst d = $input.first().json;\nconst settings = d.settings ?? {};\nconst jobs = d.jobs ?? [];\n\nconst now = new Date();\nconst wibHour = Number(now.toLocaleString(\"en-US\", { timeZone: \"Asia/Jakarta\", hour: \"2-digit\", hour12: false })) % 24;\nconst wibDay = new Date(now.getTime() + 7 * 3600 * 1000).getUTCDay();\n\nif (!settings.enabled) return [];\nif (!(settings.days ?? []).includes(wibDay)) return [];\n\nconst dayConfig = settings.dayConfigs?.[wibDay] ?? {\n  times: settings.times ?? [], carouselTimes: [],\n  voice: settings.voice, useKnowledge: settings.useKnowledge, igShareToFeed: settings.igShareToFeed,\n};\n\nlet isVideoTime = (dayConfig.times ?? []).includes(wibHour);\nlet isCarouselTime = (dayConfig.carouselTimes ?? []).includes(wibHour);\nif (!isVideoTime && !isCarouselTime) return [];\n\nconst cutoff = Date.now() - 55 * 60 * 1000;\nconst recent = (t) => jobs.some(j => j.mediaType === t && new Date(j.createdAt).getTime() > cutoff);\nif (isVideoTime && recent(\"video\")) isVideoTime = false;\nif (isCarouselTime && recent(\"carousel\")) isCarouselTime = false;\nif (!isVideoTime && !isCarouselTime) return [];\n\nconst mediaType = isVideoTime ? \"video\" : \"carousel\";\nreturn [{ json: {\n  mediaType,\n  voice: dayConfig.voice ?? \"id-ID-ArdiNeural\",\n  igShareToFeed: dayConfig.igShareToFeed ?? true,\n  autoTikTok: settings.autoTikTok ?? false,\n  autoInstagram: settings.autoInstagram ?? false,\n  contentTheme: settings.contentTheme ?? \"it-developer\",\n} }];"
+      },
+      "id": "b1000000-0000-0000-0000-000000000031",
+      "name": "Gate Jadwal Zaportfolio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [40, 440]
+    },
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/trends",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "profile", "value": "zaportfolio" },
+            { "name": "contentTheme", "value": "={{ $json.contentTheme }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000012",
+      "name": "Trending Topik Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topics = $input.first().json.topics ?? [];\nif (!topics.length) throw new Error(\"Trends Zaportfolio kosong\");\nconst gate = $(\"Gate Jadwal Zaportfolio\").first().json;\nreturn [{ json: { ...gate, topic: topics[Math.floor(Math.random() * topics.length)], profile: \"zaportfolio\" } }];"
+      },
+      "id": "b1000000-0000-0000-0000-000000000013",
+      "name": "Pilih Topik Zaportfolio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://creavoo-factory.vercel.app/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic: $json.topic, profile: \"zaportfolio\", useKnowledge: false }) }}",
+        "options": {
+          "timeout": 280000,
+          "response": { "response": { "neverError": true, "responseFormat": "text" } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000014",
+      "name": "Generate Script Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($input.first().json.data ?? \"\");\nlet script = null, errMsg = null;\nfor (const line of raw.split(\"\\n\")) {\n  const t = line.trim();\n  if (!t.startsWith(\"data:\")) continue;\n  try {\n    const evt = JSON.parse(t.slice(5).trim());\n    if (evt.type === \"done\") script = evt.data;\n    if (evt.type === \"error\") errMsg = evt.message;\n  } catch { /* token progress */ }\n}\n\nconst pick = $(\"Pilih Topik Zaportfolio\").first().json;\nif (!script) {\n  return [{ json: { ok: false, profile: \"zaportfolio\", topic: pick.topic, error: errMsg ?? \"AI tidak mengembalikan script\" } }];\n}\n\nconst base = \"https://creavoo-factory.vercel.app\";\nlet renderUrl, renderBody;\nif (pick.mediaType === \"video\") {\n  renderUrl = base + \"/api/render\";\n  renderBody = {\n    ...script, layout: \"auto\", voice: pick.voice,\n    watermarkHandle: \"\", watermarkLogoUrl: null, profile: \"zaportfolio\",\n    autoTikTok: pick.autoTikTok, autoInstagram: pick.autoInstagram, igShareToFeed: pick.igShareToFeed,\n  };\n} else {\n  renderUrl = base + \"/api/render-image\";\n  renderBody = {\n    ...script, layout: \"auto\", type: \"carousel\",\n    totalSlides: (script.tips?.length ?? 5) + 2, style: \"zaportfolio\",\n    watermarkHandle: \"\", watermarkLogoUrl: null,\n    autoInstagram: pick.autoInstagram,\n  };\n}\nreturn [{ json: { ok: true, profile: \"zaportfolio\", mediaType: pick.mediaType, topic: pick.topic, title: script.videoTitle, renderUrl, renderBody } }];"
+      },
+      "id": "b1000000-0000-0000-0000-000000000015",
+      "name": "Parse & Siapkan Render Zaportfolio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 440]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2000000-0000-0000-0000-000000000002",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1000000-0000-0000-0000-000000000016",
+      "name": "Script Zaportfolio OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1140, 440]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.renderUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.renderBody) }}",
+        "options": {
+          "timeout": 60000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "b1000000-0000-0000-0000-000000000017",
+      "name": "Trigger Render Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8104417369:AAGv48cCyw06137a-D9O3eYTQMbFY_ZiNKI/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: \"8145595315\", text: \"❌ [Zaportfolio] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "b1000000-0000-0000-0000-000000000019",
+      "name": "Notif Gagal Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 540]
+    }
+  ],
+  "connections": {
+    "Tiap Jam (menit 0)": {
+      "main": [
+        [
+          { "node": "Cek Jadwal Creavoo", "type": "main", "index": 0 },
+          { "node": "Cek Jadwal Zaportfolio", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Cek Jadwal Creavoo": {
+      "main": [[ { "node": "Gate Jadwal Creavoo", "type": "main", "index": 0 } ]]
+    },
+    "Gate Jadwal Creavoo": {
+      "main": [[ { "node": "Trending Topik Creavoo", "type": "main", "index": 0 } ]]
+    },
+    "Trending Topik Creavoo": {
+      "main": [[ { "node": "Pilih Topik Creavoo", "type": "main", "index": 0 } ]]
+    },
+    "Pilih Topik Creavoo": {
+      "main": [[ { "node": "Generate Script Creavoo", "type": "main", "index": 0 } ]]
+    },
+    "Generate Script Creavoo": {
+      "main": [[ { "node": "Parse & Siapkan Render Creavoo", "type": "main", "index": 0 } ]]
+    },
+    "Parse & Siapkan Render Creavoo": {
+      "main": [[ { "node": "Script Creavoo OK?", "type": "main", "index": 0 } ]]
+    },
+    "Script Creavoo OK?": {
+      "main": [
+        [ { "node": "Trigger Render Creavoo", "type": "main", "index": 0 } ],
+        [ { "node": "Notif Gagal Creavoo", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Cek Jadwal Zaportfolio": {
+      "main": [[ { "node": "Gate Jadwal Zaportfolio", "type": "main", "index": 0 } ]]
+    },
+    "Gate Jadwal Zaportfolio": {
+      "main": [[ { "node": "Trending Topik Zaportfolio", "type": "main", "index": 0 } ]]
+    },
+    "Trending Topik Zaportfolio": {
+      "main": [[ { "node": "Pilih Topik Zaportfolio", "type": "main", "index": 0 } ]]
+    },
+    "Pilih Topik Zaportfolio": {
+      "main": [[ { "node": "Generate Script Zaportfolio", "type": "main", "index": 0 } ]]
+    },
+    "Generate Script Zaportfolio": {
+      "main": [[ { "node": "Parse & Siapkan Render Zaportfolio", "type": "main", "index": 0 } ]]
+    },
+    "Parse & Siapkan Render Zaportfolio": {
+      "main": [[ { "node": "Script Zaportfolio OK?", "type": "main", "index": 0 } ]]
+    },
+    "Script Zaportfolio OK?": {
+      "main": [
+        [ { "node": "Trigger Render Zaportfolio", "type": "main", "index": 0 } ],
+        [ { "node": "Notif Gagal Zaportfolio", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Jakarta"
+  },
+  "pinData": {}
+}

@@ -3,7 +3,15 @@ import { list } from "@/lib/storage";
 import { loadJob, saveJob, type ScheduleJob } from "../route";
 import { sendTelegram } from "@/lib/telegram";
 
-export const maxDuration = 60;
+// Upload carousel 7 slide ke Zernio bisa >60s — 60s bikin FUNCTION_INVOCATION_TIMEOUT
+// di tengah publish (post masuk tapi status/notif hilang)
+export const maxDuration = 300;
+
+// Zernio menolak konten identik yang sudah masuk dalam 24 jam — itu berarti
+// upload sebelumnya sebenarnya BERHASIL (webhook keburu timeout sebelum mencatat)
+function isAlreadyPosted(msg: string): boolean {
+  return msg.includes("409") && msg.toLowerCase().includes("already");
+}
 
 
 // Panggil /api/publish internal — satu jalur publish untuk manual & scheduled
@@ -84,7 +92,12 @@ export async function POST(req: NextRequest) {
       });
       updated = { ...updated, tiktokUrl: r.postUrl ?? "posted", status: "posted" };
     } catch (e) {
-      errors.push(`TikTok: ${String(e instanceof Error ? e.message : e).slice(0, 200)}`);
+      const msg = String(e instanceof Error ? e.message : e);
+      if (isAlreadyPosted(msg)) {
+        updated = { ...updated, tiktokUrl: "posted", status: "posted" };
+      } else {
+        errors.push(`TikTok: ${msg.slice(0, 200)}`);
+      }
     }
   }
 
@@ -97,7 +110,12 @@ export async function POST(req: NextRequest) {
       const r = await publishInternal(body);
       updated = { ...updated, instagramUrl: r.postUrl ?? "posted", status: "posted" };
     } catch (e) {
-      errors.push(`Instagram: ${String(e instanceof Error ? e.message : e).slice(0, 200)}`);
+      const msg = String(e instanceof Error ? e.message : e);
+      if (isAlreadyPosted(msg)) {
+        updated = { ...updated, instagramUrl: "posted", status: "posted" };
+      } else {
+        errors.push(`Instagram: ${msg.slice(0, 200)}`);
+      }
     }
   }
 
