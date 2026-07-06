@@ -31,7 +31,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
           ]
         },
         "options": {
@@ -67,7 +67,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
           ]
         },
         "options": {
@@ -98,7 +98,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
@@ -160,7 +160,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
@@ -181,10 +181,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/bot8104417369:AAGv48cCyw06137a-D9O3eYTQMbFY_ZiNKI/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: \"8145595315\", text: \"❌ [Creavoo] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
         "options": { "timeout": 30000 }
       },
       "id": "b1000000-0000-0000-0000-000000000009",
@@ -206,7 +206,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
           ]
         },
         "options": {
@@ -243,7 +243,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" }
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
           ]
         },
         "options": {
@@ -274,7 +274,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
@@ -336,7 +336,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "3a2d40ae137b26be113a56631552605d9d205c7cd807eeaced73c310c2ebd715" },
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
@@ -357,10 +357,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.telegram.org/bot8104417369:AAGv48cCyw06137a-D9O3eYTQMbFY_ZiNKI/sendMessage",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: \"8145595315\", text: \"❌ [Zaportfolio] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
         "options": { "timeout": 30000 }
       },
       "id": "b1000000-0000-0000-0000-000000000019",
