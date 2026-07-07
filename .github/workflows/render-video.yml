@@ -177,12 +177,27 @@ jobs:
       - name: Notify schedule webhook
         if: always()
         run: |
-          if [ -n "$APP_URL" ] && [ -n "$SCHEDULE_WEBHOOK_SECRET" ]; then
-            curl -s -X POST "$APP_URL/api/schedule/complete" \
+          if [ -z "$APP_URL" ] || [ -z "$SCHEDULE_WEBHOOK_SECRET" ]; then
+            echo "APP_URL / SCHEDULE_WEBHOOK_SECRET tidak di-set, skip notify"
+            exit 0
+          fi
+          # Retry: transient glitch (cold start, deploy sesaat) bisa bikin request
+          # nyasar (redirect/error) sekali — job jadi stuck permanen tanpa retry ini.
+          for attempt in 1 2 3 4 5; do
+            RES=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/schedule/complete" \
               -H "Content-Type: application/json" \
               -H "X-Schedule-Secret: $SCHEDULE_WEBHOOK_SECRET" \
-              -d "{\"runId\": ${{ github.run_id }}}" || true
-          fi
+              -d "{\"runId\": ${{ github.run_id }}}")
+            CODE=$(echo "$RES" | tail -n1)
+            BODY=$(echo "$RES" | sed '$d')
+            echo "attempt $attempt: HTTP $CODE — $BODY"
+            if [ "$CODE" = "200" ] && echo "$BODY" | grep -q '"ok":true'; then
+              echo "✓ webhook sukses"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "⚠️ webhook gagal setelah 5 percobaan — job mungkin perlu diproses manual"
         env:
           APP_URL: ${{ secrets.APP_URL }}
           SCHEDULE_WEBHOOK_SECRET: ${{ secrets.SCHEDULE_WEBHOOK_SECRET }}
