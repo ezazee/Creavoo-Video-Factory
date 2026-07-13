@@ -16,34 +16,49 @@
       "name": "Tiap Jam (menit 0)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-420, 240]
+      "position": [
+        -420,
+        240
+      ]
     },
-
     {
       "parameters": {
         "url": "https://creavoo-factory.vercel.app/api/schedule",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "profile", "value": "creavoo" }
+            {
+              "name": "profile",
+              "value": "creavoo"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            }
           ]
         },
         "options": {
           "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000020",
       "name": "Cek Jadwal Creavoo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 60]
+      "position": [
+        -180,
+        60
+      ]
     },
     {
       "parameters": {
@@ -53,7 +68,10 @@
       "name": "Gate Jadwal Creavoo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [40, 60]
+      "position": [
+        40,
+        60
+      ]
     },
     {
       "parameters": {
@@ -61,25 +79,38 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "profile", "value": "creavoo" }
+            {
+              "name": "profile",
+              "value": "creavoo"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            }
           ]
         },
         "options": {
           "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000002",
       "name": "Trending Topik Creavoo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 60]
+      "position": [
+        260,
+        60
+      ]
     },
     {
       "parameters": {
@@ -89,7 +120,10 @@
       "name": "Pilih Topik Creavoo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 60]
+      "position": [
+        480,
+        60
+      ]
     },
     {
       "parameters": {
@@ -98,8 +132,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -107,14 +147,22 @@
         "jsonBody": "={{ JSON.stringify({ topic: $json.topic, profile: \"creavoo\", useKnowledge: $json.useKnowledge }) }}",
         "options": {
           "timeout": 280000,
-          "response": { "response": { "neverError": true, "responseFormat": "text" } }
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000004",
       "name": "Generate Script Creavoo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [700, 60]
+      "position": [
+        700,
+        60
+      ]
     },
     {
       "parameters": {
@@ -124,7 +172,10 @@
       "name": "Parse & Siapkan Render Creavoo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 60]
+      "position": [
+        920,
+        60
+      ]
     },
     {
       "parameters": {
@@ -140,7 +191,11 @@
               "id": "c2000000-0000-0000-0000-000000000001",
               "leftValue": "={{ $json.ok }}",
               "rightValue": "",
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -151,7 +206,10 @@
       "name": "Script Creavoo OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1140, 60]
+      "position": [
+        1140,
+        60
+      ]
     },
     {
       "parameters": {
@@ -160,8 +218,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -169,14 +233,21 @@
         "jsonBody": "={{ JSON.stringify($json.renderBody) }}",
         "options": {
           "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000007",
       "name": "Trigger Render Creavoo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1360, -40]
+      "position": [
+        1360,
+        -40
+      ]
     },
     {
       "parameters": {
@@ -185,40 +256,57 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "b1000000-0000-0000-0000-000000000009",
       "name": "Notif Gagal Creavoo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1360, 160]
+      "position": [
+        1360,
+        160
+      ]
     },
-
     {
       "parameters": {
         "url": "https://creavoo-factory.vercel.app/api/schedule",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "profile", "value": "zaportfolio" }
+            {
+              "name": "profile",
+              "value": "zaportfolio"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            }
           ]
         },
         "options": {
           "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000030",
       "name": "Cek Jadwal Zaportfolio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 440]
+      "position": [
+        -180,
+        440
+      ]
     },
     {
       "parameters": {
@@ -228,7 +316,10 @@
       "name": "Gate Jadwal Zaportfolio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [40, 440]
+      "position": [
+        40,
+        440
+      ]
     },
     {
       "parameters": {
@@ -236,26 +327,42 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "profile", "value": "zaportfolio" },
-            { "name": "contentTheme", "value": "={{ $json.contentTheme }}" }
+            {
+              "name": "profile",
+              "value": "zaportfolio"
+            },
+            {
+              "name": "contentTheme",
+              "value": "={{ $json.contentTheme }}"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            }
           ]
         },
         "options": {
           "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000012",
       "name": "Trending Topik Zaportfolio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 440]
+      "position": [
+        260,
+        440
+      ]
     },
     {
       "parameters": {
@@ -265,7 +372,10 @@
       "name": "Pilih Topik Zaportfolio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 440]
+      "position": [
+        480,
+        440
+      ]
     },
     {
       "parameters": {
@@ -274,8 +384,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -283,14 +399,22 @@
         "jsonBody": "={{ JSON.stringify({ topic: $json.topic, profile: \"zaportfolio\", useKnowledge: false }) }}",
         "options": {
           "timeout": 280000,
-          "response": { "response": { "neverError": true, "responseFormat": "text" } }
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000014",
       "name": "Generate Script Zaportfolio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [700, 440]
+      "position": [
+        700,
+        440
+      ]
     },
     {
       "parameters": {
@@ -300,7 +424,10 @@
       "name": "Parse & Siapkan Render Zaportfolio",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 440]
+      "position": [
+        920,
+        440
+      ]
     },
     {
       "parameters": {
@@ -316,7 +443,11 @@
               "id": "c2000000-0000-0000-0000-000000000002",
               "leftValue": "={{ $json.ok }}",
               "rightValue": "",
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -327,7 +458,10 @@
       "name": "Script Zaportfolio OK?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1140, 440]
+      "position": [
+        1140,
+        440
+      ]
     },
     {
       "parameters": {
@@ -336,8 +470,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -345,14 +485,21 @@
         "jsonBody": "={{ JSON.stringify($json.renderBody) }}",
         "options": {
           "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "b1000000-0000-0000-0000-000000000017",
       "name": "Trigger Render Zaportfolio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1360, 340]
+      "position": [
+        1360,
+        340
+      ]
     },
     {
       "parameters": {
@@ -361,15 +508,19 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "b1000000-0000-0000-0000-000000000019",
       "name": "Notif Gagal Zaportfolio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1360, 540]
+      "position": [
+        1360,
+        540
+      ]
     },
-
     {
       "parameters": {
         "rule": {
@@ -385,7 +536,10 @@
       "name": "Jam 8 Pagi WIB",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-420, 760]
+      "position": [
+        -420,
+        760
+      ]
     },
     {
       "parameters": {
@@ -393,25 +547,38 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "profile", "value": "creavoo" }
+            {
+              "name": "profile",
+              "value": "creavoo"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            }
           ]
         },
         "options": {
           "timeout": 30000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "e1000000-0000-0000-0000-000000000002",
       "name": "Ambil Jadwal Creavoo (Digest)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 760]
+      "position": [
+        -180,
+        760
+      ]
     },
     {
       "parameters": {
@@ -419,25 +586,38 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "profile", "value": "zaportfolio" }
+            {
+              "name": "profile",
+              "value": "zaportfolio"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            }
           ]
         },
         "options": {
           "timeout": 30000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "e1000000-0000-0000-0000-000000000003",
       "name": "Ambil Jadwal Zaportfolio (Digest)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [40, 760]
+      "position": [
+        40,
+        760
+      ]
     },
     {
       "parameters": {
@@ -447,7 +627,10 @@
       "name": "Susun Pesan Digest",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [260, 760]
+      "position": [
+        260,
+        760
+      ]
     },
     {
       "parameters": {
@@ -464,9 +647,11 @@
       "name": "Kirim Telegram Digest",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 760]
+      "position": [
+        480,
+        760
+      ]
     },
-
     {
       "parameters": {
         "rule": {
@@ -482,7 +667,10 @@
       "name": "Minggu 20:00 WIB",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-420, 1000]
+      "position": [
+        -420,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -491,8 +679,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -500,14 +694,21 @@
         "jsonBody": "={{ JSON.stringify({ profile: \"creavoo\" }) }}",
         "options": {
           "timeout": 100000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "f1000000-0000-0000-0000-000000000002",
       "name": "Evaluasi Creavoo",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-180, 1000]
+      "position": [
+        -180,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -516,8 +717,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -525,14 +732,21 @@
         "jsonBody": "={{ JSON.stringify({ profile: \"zaportfolio\" }) }}",
         "options": {
           "timeout": 100000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
         }
       },
       "id": "f1000000-0000-0000-0000-000000000003",
       "name": "Evaluasi Zaportfolio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [40, 1000]
+      "position": [
+        40,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -542,7 +756,10 @@
       "name": "Susun Pesan Evaluasi",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [260, 1000]
+      "position": [
+        260,
+        1000
+      ]
     },
     {
       "parameters": {
@@ -559,89 +776,1148 @@
       "name": "Kirim Telegram Evaluasi",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [480, 1000]
+      "position": [
+        480,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hcre0001",
+              "leftValue": "={{ !!$json.runId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gcre00000-0000-0000-0000-000000000101",
+      "name": "Ada RunId Creavoo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1580,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simpan runId + waktu mulai polling — dipakai sepanjang loop untuk cek timeout 2 jam\nconst runId = $input.first().json.runId;\nconst title = $(\"Parse & Siapkan Render Creavoo\").first().json.title;\nreturn [{ json: { runId, title, startedAt: Date.now() } }];"
+      },
+      "id": "gcre00000-0000-0000-0000-000000000102",
+      "name": "Mulai Polling Creavoo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Trigger render GAGAL — GitHub Actions tidak memberi runId. Cek koneksi GITHUB_TOKEN.\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "gcre00000-0000-0000-0000-000000000103",
+      "name": "Notif Trigger Render Gagal Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "id": "gcre00000-0000-0000-0000-000000000104",
+      "name": "Tunggu 5 Menit Creavoo",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2020,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/run-status",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $('Mulai Polling Creavoo').first().json.runId }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "gcre00000-0000-0000-0000-000000000105",
+      "name": "Cek Status Render Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2240,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tentukan aksi: selesai (sukses) / gagal (GH Actions conclusion != success) /\n// timeout (>2 jam sejak trigger) / tunggu (masih in_progress, lanjut poll)\nconst info = $(\"Mulai Polling Creavoo\").first().json;\nconst status = $input.first().json;\nconst elapsedMs = Date.now() - info.startedAt;\nconst TWO_HOURS = 2 * 3600 * 1000;\n\nlet action = \"tunggu\";\nif (status.status === \"completed\") {\n  action = status.conclusion === \"success\" ? \"selesai\" : \"gagal\";\n} else if (elapsedMs > TWO_HOURS) {\n  action = \"timeout\";\n}\n\nreturn [{ json: { action, runId: info.runId, title: info.title, elapsedMin: Math.round(elapsedMs / 60000) } }];"
+      },
+      "id": "gcre00000-0000-0000-0000-000000000106",
+      "name": "Keputusan Polling Creavoo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hcre0002",
+              "leftValue": "={{ $json.action === 'selesai' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gcre00000-0000-0000-0000-000000000107",
+      "name": "Selesai Sukses Creavoo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2680,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://creavoo-factory.vercel.app/api/schedule/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ runId: $json.runId }) }}",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "gcre00000-0000-0000-0000-000000000108",
+      "name": "Panggil Complete Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2900,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hcre0003",
+              "leftValue": "={{ $json.action === 'gagal' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gcre00000-0000-0000-0000-000000000109",
+      "name": "Gagal Creavoo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2900,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Render GAGAL di GitHub Actions!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "gcre00000-0000-0000-0000-000000000110",
+      "name": "Notif Render Gagal Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hcre0004",
+              "leftValue": "={{ $json.action === 'timeout' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gcre00000-0000-0000-0000-000000000111",
+      "name": "Timeout Creavoo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2900,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"⏱️ [Creavoo] Render KELAMAAN (>2 jam), kemungkinan macet!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId + \"\\n\\nCek manual di GitHub Actions.\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "gcre00000-0000-0000-0000-000000000112",
+      "name": "Notif Timeout Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hzap0001",
+              "leftValue": "={{ !!$json.runId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gzap00000-0000-0000-0000-000000000101",
+      "name": "Ada RunId Zaportfolio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1580,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simpan runId + waktu mulai polling — dipakai sepanjang loop untuk cek timeout 2 jam\nconst runId = $input.first().json.runId;\nconst title = $(\"Parse & Siapkan Render Zaportfolio\").first().json.title;\nreturn [{ json: { runId, title, startedAt: Date.now() } }];"
+      },
+      "id": "gzap00000-0000-0000-0000-000000000102",
+      "name": "Mulai Polling Zaportfolio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Trigger render GAGAL — GitHub Actions tidak memberi runId. Cek koneksi GITHUB_TOKEN.\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "gzap00000-0000-0000-0000-000000000103",
+      "name": "Notif Trigger Render Gagal Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "id": "gzap00000-0000-0000-0000-000000000104",
+      "name": "Tunggu 5 Menit Zaportfolio",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2020,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/run-status",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $('Mulai Polling Zaportfolio').first().json.runId }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "gzap00000-0000-0000-0000-000000000105",
+      "name": "Cek Status Render Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2240,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tentukan aksi: selesai (sukses) / gagal (GH Actions conclusion != success) /\n// timeout (>2 jam sejak trigger) / tunggu (masih in_progress, lanjut poll)\nconst info = $(\"Mulai Polling Zaportfolio\").first().json;\nconst status = $input.first().json;\nconst elapsedMs = Date.now() - info.startedAt;\nconst TWO_HOURS = 2 * 3600 * 1000;\n\nlet action = \"tunggu\";\nif (status.status === \"completed\") {\n  action = status.conclusion === \"success\" ? \"selesai\" : \"gagal\";\n} else if (elapsedMs > TWO_HOURS) {\n  action = \"timeout\";\n}\n\nreturn [{ json: { action, runId: info.runId, title: info.title, elapsedMin: Math.round(elapsedMs / 60000) } }];"
+      },
+      "id": "gzap00000-0000-0000-0000-000000000106",
+      "name": "Keputusan Polling Zaportfolio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2460,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hzap0002",
+              "leftValue": "={{ $json.action === 'selesai' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gzap00000-0000-0000-0000-000000000107",
+      "name": "Selesai Sukses Zaportfolio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2680,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://creavoo-factory.vercel.app/api/schedule/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-secret",
+              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ runId: $json.runId }) }}",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "gzap00000-0000-0000-0000-000000000108",
+      "name": "Panggil Complete Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2900,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hzap0003",
+              "leftValue": "={{ $json.action === 'gagal' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gzap00000-0000-0000-0000-000000000109",
+      "name": "Gagal Zaportfolio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Render GAGAL di GitHub Actions!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "gzap00000-0000-0000-0000-000000000110",
+      "name": "Notif Render Gagal Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "hzap0004",
+              "leftValue": "={{ $json.action === 'timeout' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gzap00000-0000-0000-0000-000000000111",
+      "name": "Timeout Zaportfolio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2900,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"⏱️ [Zaportfolio] Render KELAMAAN (>2 jam), kemungkinan macet!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId + \"\\n\\nCek manual di GitHub Actions.\" }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "gzap00000-0000-0000-0000-000000000112",
+      "name": "Notif Timeout Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        640
+      ]
     }
   ],
   "connections": {
     "Tiap Jam (menit 0)": {
       "main": [
         [
-          { "node": "Cek Jadwal Creavoo", "type": "main", "index": 0 },
-          { "node": "Cek Jadwal Zaportfolio", "type": "main", "index": 0 }
+          {
+            "node": "Cek Jadwal Creavoo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cek Jadwal Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "Cek Jadwal Creavoo": {
-      "main": [[ { "node": "Gate Jadwal Creavoo", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Gate Jadwal Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gate Jadwal Creavoo": {
-      "main": [[ { "node": "Trending Topik Creavoo", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Trending Topik Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Trending Topik Creavoo": {
-      "main": [[ { "node": "Pilih Topik Creavoo", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Pilih Topik Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Pilih Topik Creavoo": {
-      "main": [[ { "node": "Generate Script Creavoo", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Generate Script Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Script Creavoo": {
-      "main": [[ { "node": "Parse & Siapkan Render Creavoo", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Parse & Siapkan Render Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse & Siapkan Render Creavoo": {
-      "main": [[ { "node": "Script Creavoo OK?", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Script Creavoo OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Script Creavoo OK?": {
       "main": [
-        [ { "node": "Trigger Render Creavoo", "type": "main", "index": 0 } ],
-        [ { "node": "Notif Gagal Creavoo", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Trigger Render Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notif Gagal Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Cek Jadwal Zaportfolio": {
-      "main": [[ { "node": "Gate Jadwal Zaportfolio", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Gate Jadwal Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gate Jadwal Zaportfolio": {
-      "main": [[ { "node": "Trending Topik Zaportfolio", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Trending Topik Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Trending Topik Zaportfolio": {
-      "main": [[ { "node": "Pilih Topik Zaportfolio", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Pilih Topik Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Pilih Topik Zaportfolio": {
-      "main": [[ { "node": "Generate Script Zaportfolio", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Generate Script Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Script Zaportfolio": {
-      "main": [[ { "node": "Parse & Siapkan Render Zaportfolio", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Parse & Siapkan Render Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse & Siapkan Render Zaportfolio": {
-      "main": [[ { "node": "Script Zaportfolio OK?", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Script Zaportfolio OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Script Zaportfolio OK?": {
       "main": [
-        [ { "node": "Trigger Render Zaportfolio", "type": "main", "index": 0 } ],
-        [ { "node": "Notif Gagal Zaportfolio", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Trigger Render Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notif Gagal Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Jam 8 Pagi WIB": {
-      "main": [[ { "node": "Ambil Jadwal Creavoo (Digest)", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Ambil Jadwal Creavoo (Digest)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ambil Jadwal Creavoo (Digest)": {
-      "main": [[ { "node": "Ambil Jadwal Zaportfolio (Digest)", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Ambil Jadwal Zaportfolio (Digest)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Ambil Jadwal Zaportfolio (Digest)": {
-      "main": [[ { "node": "Susun Pesan Digest", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Susun Pesan Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Susun Pesan Digest": {
-      "main": [[ { "node": "Kirim Telegram Digest", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Kirim Telegram Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Minggu 20:00 WIB": {
-      "main": [[ { "node": "Evaluasi Creavoo", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Evaluasi Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Evaluasi Creavoo": {
-      "main": [[ { "node": "Evaluasi Zaportfolio", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Evaluasi Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Evaluasi Zaportfolio": {
-      "main": [[ { "node": "Susun Pesan Evaluasi", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Susun Pesan Evaluasi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Susun Pesan Evaluasi": {
-      "main": [[ { "node": "Kirim Telegram Evaluasi", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Kirim Telegram Evaluasi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Render Creavoo": {
+      "main": [
+        [
+          {
+            "node": "Ada RunId Creavoo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ada RunId Creavoo?": {
+      "main": [
+        [
+          {
+            "node": "Mulai Polling Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notif Trigger Render Gagal Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mulai Polling Creavoo": {
+      "main": [
+        [
+          {
+            "node": "Tunggu 5 Menit Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tunggu 5 Menit Creavoo": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Render Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Render Creavoo": {
+      "main": [
+        [
+          {
+            "node": "Keputusan Polling Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keputusan Polling Creavoo": {
+      "main": [
+        [
+          {
+            "node": "Selesai Sukses Creavoo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selesai Sukses Creavoo?": {
+      "main": [
+        [
+          {
+            "node": "Panggil Complete Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gagal Creavoo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gagal Creavoo?": {
+      "main": [
+        [
+          {
+            "node": "Notif Render Gagal Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Timeout Creavoo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Timeout Creavoo?": {
+      "main": [
+        [
+          {
+            "node": "Notif Timeout Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tunggu 5 Menit Creavoo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Render Zaportfolio": {
+      "main": [
+        [
+          {
+            "node": "Ada RunId Zaportfolio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ada RunId Zaportfolio?": {
+      "main": [
+        [
+          {
+            "node": "Mulai Polling Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notif Trigger Render Gagal Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mulai Polling Zaportfolio": {
+      "main": [
+        [
+          {
+            "node": "Tunggu 5 Menit Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tunggu 5 Menit Zaportfolio": {
+      "main": [
+        [
+          {
+            "node": "Cek Status Render Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cek Status Render Zaportfolio": {
+      "main": [
+        [
+          {
+            "node": "Keputusan Polling Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keputusan Polling Zaportfolio": {
+      "main": [
+        [
+          {
+            "node": "Selesai Sukses Zaportfolio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selesai Sukses Zaportfolio?": {
+      "main": [
+        [
+          {
+            "node": "Panggil Complete Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gagal Zaportfolio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gagal Zaportfolio?": {
+      "main": [
+        [
+          {
+            "node": "Notif Render Gagal Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Timeout Zaportfolio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Timeout Zaportfolio?": {
+      "main": [
+        [
+          {
+            "node": "Notif Timeout Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tunggu 5 Menit Zaportfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
