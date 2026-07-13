@@ -64,16 +64,16 @@ export const RECOMMENDED_SETTINGS: Omit<ScheduleSettings, "enabled" | "autoTikTo
   voice: "id-ID-ArdiNeural",
   useKnowledge: true,
   igShareToFeed: true,
-  times: [7, 20],
+  times: [9],
   dayConfigs: {
-    // 6 video + 6 carousel per minggu, tidak ada jam yang tumpang tindih
-    0: { times: [],      carouselTimes: [19],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu   — 🎠19
-    1: { times: [7],     carouselTimes: [21],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin    — 🎥07  🎠21
-    2: { times: [20],    carouselTimes: [12],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa   — 🎠12  🎥20
-    3: { times: [7, 21], carouselTimes: [],       voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu     — 🎥07  🎥21
-    4: { times: [],      carouselTimes: [12, 19], voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Kamis    — 🎠12  🎠19
-    5: { times: [7],     carouselTimes: [20],     voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Jumat    — 🎥07  🎠20
-    6: { times: [10],    carouselTimes: [],       voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Sabtu    — 🎥10
+    // 1 post/hari, jam 09-20 WIB, 5 video (reels) + 2 carousel per minggu
+    0: { times: [10], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu   — 🎥10
+    1: { times: [9],  carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin    — 🎥09
+    2: { times: [],   carouselTimes: [14], voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa   — 🎠14
+    3: { times: [19], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu     — 🎥19
+    4: { times: [11], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Kamis    — 🎥11
+    5: { times: [],   carouselTimes: [16], voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Jumat    — 🎠16
+    6: { times: [20], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Sabtu    — 🎥20
   },
 };
 
@@ -84,6 +84,7 @@ export const DEFAULT_SETTINGS: ScheduleSettings = {
   ...RECOMMENDED_SETTINGS,
 };
 
+// Zaportfolio: Instagram-only, TikTok selalu off
 export const DEFAULT_SETTINGS_ZAPORTFOLIO: ScheduleSettings = {
   enabled: false,
   autoTikTok: false,
@@ -92,16 +93,17 @@ export const DEFAULT_SETTINGS_ZAPORTFOLIO: ScheduleSettings = {
   voice: "id-ID-ArdiNeural",
   useKnowledge: false,
   igShareToFeed: true,
-  times: [8],
+  times: [9],
   contentTheme: "it-developer",
   dayConfigs: {
-    0: { times: [10], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
-    1: { times: [8],  carouselTimes: [20], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
-    2: { times: [],   carouselTimes: [12], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
-    3: { times: [8],  carouselTimes: [19], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
-    4: { times: [],   carouselTimes: [12], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
-    5: { times: [8],  carouselTimes: [21], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
-    6: { times: [11], carouselTimes: [18], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },
+    // 1 post/hari, jam 09-20 WIB, 5 video (reels) + 2 carousel per minggu
+    0: { times: [11], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Minggu   — 🎥11
+    1: { times: [10], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Senin    — 🎥10
+    2: { times: [15], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Selasa   — 🎥15
+    3: { times: [],   carouselTimes: [12], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Rabu     — 🎠12
+    4: { times: [18], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Kamis    — 🎥18
+    5: { times: [9],  carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Jumat    — 🎥09
+    6: { times: [],   carouselTimes: [17], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Sabtu    — 🎠17
   },
 };
 
