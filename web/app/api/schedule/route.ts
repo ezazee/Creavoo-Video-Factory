@@ -66,8 +66,10 @@ export const RECOMMENDED_SETTINGS: Omit<ScheduleSettings, "enabled" | "autoTikTo
   igShareToFeed: true,
   times: [9],
   dayConfigs: {
-    // 1 post/hari, jam 09-20 WIB, 5 video (reels) + 2 carousel per minggu
-    0: { times: [10], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu   — 🎥10
+    // Senin-Sabtu posting (1/hari, jam 09-20 WIB, 4 video + 2 carousel).
+    // Minggu sengaja kosong — hari evaluasi mingguan (lihat /api/schedule/evaluate),
+    // bukan hari posting. Jadwal hasil evaluasi diterapkan otomatis tiap Minggu malam.
+    0: { times: [], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Minggu   — evaluasi
     1: { times: [9],  carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Senin    — 🎥09
     2: { times: [],   carouselTimes: [14], voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Selasa   — 🎠14
     3: { times: [19], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: true, igShareToFeed: true },  // Rabu     — 🎥19
@@ -96,8 +98,9 @@ export const DEFAULT_SETTINGS_ZAPORTFOLIO: ScheduleSettings = {
   times: [9],
   contentTheme: "it-developer",
   dayConfigs: {
-    // 1 post/hari, jam 09-20 WIB, 5 video (reels) + 2 carousel per minggu
-    0: { times: [11], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Minggu   — 🎥11
+    // Senin-Sabtu posting (1/hari, jam 09-20 WIB, 4 video + 2 carousel).
+    // Minggu sengaja kosong — hari evaluasi mingguan, bukan hari posting.
+    0: { times: [], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Minggu   — evaluasi
     1: { times: [10], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Senin    — 🎥10
     2: { times: [15], carouselTimes: [],   voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Selasa   — 🎥15
     3: { times: [],   carouselTimes: [12], voice: "id-ID-ArdiNeural", useKnowledge: false, igShareToFeed: true },  // Rabu     — 🎠12
