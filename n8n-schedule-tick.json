@@ -1,5 +1,5 @@
 {
-  "name": "Video Factory — Full Pipeline (ikut jadwal per profile)",
+  "name": "Video Factory — Full Pipeline (posting, notif harian, evaluasi mingguan)",
   "nodes": [
     {
       "parameters": {
@@ -368,6 +368,198 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1360, 540]
+    },
+
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "e1000000-0000-0000-0000-000000000001",
+      "name": "Jam 8 Pagi WIB",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-420, 760]
+    },
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/schedule",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "profile", "value": "creavoo" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "e1000000-0000-0000-0000-000000000002",
+      "name": "Ambil Jadwal Creavoo (Digest)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-180, 760]
+    },
+    {
+      "parameters": {
+        "url": "https://creavoo-factory.vercel.app/api/schedule",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "profile", "value": "zaportfolio" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "e1000000-0000-0000-0000-000000000003",
+      "name": "Ambil Jadwal Zaportfolio (Digest)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 760]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun ringkasan rencana konten HARI INI (WIB) untuk kedua profile, dari\n// settings jadwal masing-masing (dayConfigs per hari). Judul konten belum ada\n// di jam 8 pagi karena AI baru generate script tepat di jam produksinya —\n// jadi yang ditampilkan tipe konten (Video/Reels atau Carousel) + jam produksi.\nconst names = [\"Minggu\", \"Senin\", \"Selasa\", \"Rabu\", \"Kamis\", \"Jumat\", \"Sabtu\"];\nconst now = new Date();\nconst wibDay = new Date(now.getTime() + 7 * 3600 * 1000).getUTCDay();\nconst hariName = names[wibDay];\n\nfunction planFor(resp, label) {\n  const s = resp?.settings ?? {};\n  if (!s.enabled) return `${label}\\ncontent : (schedule OFF, tidak ada rencana hari ini)\\n`;\n  if (!(s.days ?? []).includes(wibDay)) return `${label}\\ncontent : (hari libur, tidak ada jadwal)\\n`;\n\n  const dc = s.dayConfigs?.[wibDay] ?? { times: s.times ?? [], carouselTimes: [] };\n  const items = [];\n  for (const h of (dc.times ?? [])) {\n    const pf = [];\n    if (s.autoTikTok) pf.push(\"TikTok\");\n    if (s.autoInstagram) pf.push(\"Instagram\");\n    items.push({ type: \"Video/Reels\", hour: h, pf });\n  }\n  for (const h of (dc.carouselTimes ?? [])) {\n    const pf = [];\n    if (s.autoInstagram) pf.push(\"Instagram\");\n    items.push({ type: \"Carousel\", hour: h, pf });\n  }\n  items.sort((a, b) => a.hour - b.hour);\n\n  if (!items.length) return `${label}\\ncontent : (hari evaluasi mingguan, tidak ada posting)\\n`;\n\n  let out = `${label}\\n`;\n  items.forEach((it, i) => {\n    out += `content : ${it.type}\\n`;\n    out += `platform : ${it.pf.join(\" / \") || \"-\"}\\n`;\n    out += `Produksi & posting : jam ${String(it.hour).padStart(2, \"0\")}:00 WIB\\n`;\n    if (i < items.length - 1) out += \"\\n\";\n  });\n  return out;\n}\n\nconst creavoo = $(\"Ambil Jadwal Creavoo (Digest)\").first().json;\nconst zap = $input.first().json;\n\nconst text =\n  `📅 RENCANA KONTEN SOSMED HARI ${hariName}\\n\\n` +\n  planFor(creavoo, \"Creavoo\") + \"\\n\" +\n  planFor(zap, \"zaportfolio\") + \"\\n\" +\n  `Source : https://creavoo-factory.vercel.app`;\n\nreturn [{ json: { text } }];"
+      },
+      "id": "e1000000-0000-0000-0000-000000000004",
+      "name": "Susun Pesan Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 760]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: $json.text }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e1000000-0000-0000-0000-000000000005",
+      "name": "Kirim Telegram Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 760]
+    },
+
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "f1000000-0000-0000-0000-000000000001",
+      "name": "Minggu 20:00 WIB",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-420, 1000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://creavoo-factory.vercel.app/api/schedule/evaluate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ profile: \"creavoo\" }) }}",
+        "options": {
+          "timeout": 100000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "f1000000-0000-0000-0000-000000000002",
+      "name": "Evaluasi Creavoo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-180, 1000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://creavoo-factory.vercel.app/api/schedule/evaluate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-internal-secret", "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ profile: \"zaportfolio\" }) }}",
+        "options": {
+          "timeout": 100000,
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "f1000000-0000-0000-0000-000000000003",
+      "name": "Evaluasi Zaportfolio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 1000]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun hasil evaluasi kedua profile jadi satu pesan Telegram.\nconst c = $(\"Evaluasi Creavoo\").first().json;\nconst z = $input.first().json;\n\nfunction block(label, r) {\n  if (!r?.ok) return `${label}\\n⚠️ Evaluasi gagal: ${r?.error ?? \"unknown\"}\\n`;\n  const status = r.applied ? \"✅ Jadwal minggu depan diperbarui\" : \"ℹ️ Jadwal dipertahankan (data belum cukup / tidak berubah)\";\n  return `${label} (${r.postsAnalyzed ?? 0} post dianalisis)\\n${r.narrative}\\n${status}\\n`;\n}\n\nconst text =\n  `📊 EVALUASI MINGGUAN\\n\\n` +\n  block(\"Creavoo\", c) + \"\\n\" +\n  block(\"Zaportfolio\", z) + \"\\n\" +\n  `Cek/atur manual di Schedule: https://creavoo-factory.vercel.app/schedule`;\n\nreturn [{ json: { text } }];"
+      },
+      "id": "f1000000-0000-0000-0000-000000000004",
+      "name": "Susun Pesan Evaluasi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 1000]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: $json.text }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "f1000000-0000-0000-0000-000000000005",
+      "name": "Kirim Telegram Evaluasi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 1000]
     }
   ],
   "connections": {
@@ -426,6 +618,30 @@
         [ { "node": "Trigger Render Zaportfolio", "type": "main", "index": 0 } ],
         [ { "node": "Notif Gagal Zaportfolio", "type": "main", "index": 0 } ]
       ]
+    },
+    "Jam 8 Pagi WIB": {
+      "main": [[ { "node": "Ambil Jadwal Creavoo (Digest)", "type": "main", "index": 0 } ]]
+    },
+    "Ambil Jadwal Creavoo (Digest)": {
+      "main": [[ { "node": "Ambil Jadwal Zaportfolio (Digest)", "type": "main", "index": 0 } ]]
+    },
+    "Ambil Jadwal Zaportfolio (Digest)": {
+      "main": [[ { "node": "Susun Pesan Digest", "type": "main", "index": 0 } ]]
+    },
+    "Susun Pesan Digest": {
+      "main": [[ { "node": "Kirim Telegram Digest", "type": "main", "index": 0 } ]]
+    },
+    "Minggu 20:00 WIB": {
+      "main": [[ { "node": "Evaluasi Creavoo", "type": "main", "index": 0 } ]]
+    },
+    "Evaluasi Creavoo": {
+      "main": [[ { "node": "Evaluasi Zaportfolio", "type": "main", "index": 0 } ]]
+    },
+    "Evaluasi Zaportfolio": {
+      "main": [[ { "node": "Susun Pesan Evaluasi", "type": "main", "index": 0 } ]]
+    },
+    "Susun Pesan Evaluasi": {
+      "main": [[ { "node": "Kirim Telegram Evaluasi", "type": "main", "index": 0 } ]]
     }
   },
   "settings": {
