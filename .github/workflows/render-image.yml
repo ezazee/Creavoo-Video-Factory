@@ -126,10 +126,14 @@ jobs:
             echo "APP_URL / SCHEDULE_WEBHOOK_SECRET tidak di-set, skip notify"
             exit 0
           fi
+          # Normalisasi APP_URL: paksa https, buang trailing slash. Kalau secret
+          # ke-set salah format (http:// atau ada "/" di akhir), Vercel balas 308
+          # redirect dan curl tanpa -L berhenti di situ — job stuck permanen tanpa ini.
+          CLEAN_URL=$(echo "$APP_URL" | sed -E 's#^http://#https://#; s#/+$##')
           # Retry: transient glitch (cold start, deploy sesaat) bisa bikin request
           # nyasar (redirect/error) sekali — job jadi stuck permanen tanpa retry ini.
           for attempt in 1 2 3 4 5; do
-            RES=$(curl -s -w "\n%{http_code}" -X POST "$APP_URL/api/schedule/complete" \
+            RES=$(curl -sL -w "\n%{http_code}" -X POST "$CLEAN_URL/api/schedule/complete" \
               -H "Content-Type: application/json" \
               -H "X-Schedule-Secret: $SCHEDULE_WEBHOOK_SECRET" \
               -d "{\"runId\": ${{ github.run_id }}}")
