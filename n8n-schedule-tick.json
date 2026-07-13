@@ -33,15 +33,6 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 60000,
           "response": {
@@ -49,7 +40,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000020",
       "name": "Cek Jadwal Creavoo",
@@ -58,7 +51,13 @@
       "position": [
         -180,
         60
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -85,15 +84,6 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 60000,
           "response": {
@@ -101,7 +91,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000002",
       "name": "Trending Topik Creavoo",
@@ -110,7 +102,13 @@
       "position": [
         260,
         60
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -133,10 +131,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -153,7 +147,9 @@
               "responseFormat": "text"
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000004",
       "name": "Generate Script Creavoo",
@@ -162,7 +158,13 @@
       "position": [
         700,
         60
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -219,10 +221,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -238,7 +236,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000007",
       "name": "Trigger Render Creavoo",
@@ -247,27 +247,36 @@
       "position": [
         1360,
         -40
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"❌ [Creavoo] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }}",
+        "additionalFields": {}
       },
       "id": "b1000000-0000-0000-0000-000000000009",
       "name": "Notif Gagal Creavoo",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         1360,
         160
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -281,15 +290,6 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 60000,
           "response": {
@@ -297,7 +297,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000030",
       "name": "Cek Jadwal Zaportfolio",
@@ -306,7 +308,13 @@
       "position": [
         -180,
         440
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -337,15 +345,6 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 60000,
           "response": {
@@ -353,7 +352,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000012",
       "name": "Trending Topik Zaportfolio",
@@ -362,7 +363,13 @@
       "position": [
         260,
         440
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -385,10 +392,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -405,7 +408,9 @@
               "responseFormat": "text"
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000014",
       "name": "Generate Script Zaportfolio",
@@ -414,7 +419,13 @@
       "position": [
         700,
         440
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -471,10 +482,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -490,7 +497,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "b1000000-0000-0000-0000-000000000017",
       "name": "Trigger Render Zaportfolio",
@@ -499,27 +508,36 @@
       "position": [
         1360,
         340
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"❌ [Zaportfolio] Generate script GAGAL!\\n\\ntopik : \" + ($json.topic ?? \"-\") + \"\\nerror : \" + ($json.error ?? \"unknown\") + \"\\n\\nTidak ada yang di-render. Run berikutnya pilih topik lain otomatis.\" }}",
+        "additionalFields": {}
       },
       "id": "b1000000-0000-0000-0000-000000000019",
       "name": "Notif Gagal Zaportfolio",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         1360,
         540
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -553,15 +571,6 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 30000,
           "response": {
@@ -569,7 +578,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "e1000000-0000-0000-0000-000000000002",
       "name": "Ambil Jadwal Creavoo (Digest)",
@@ -578,7 +589,13 @@
       "position": [
         -180,
         760
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -592,15 +609,6 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            }
-          ]
-        },
         "options": {
           "timeout": 30000,
           "response": {
@@ -608,7 +616,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "e1000000-0000-0000-0000-000000000003",
       "name": "Ambil Jadwal Zaportfolio (Digest)",
@@ -617,7 +627,13 @@
       "position": [
         40,
         760
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -634,23 +650,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: $json.text }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
       },
       "id": "e1000000-0000-0000-0000-000000000005",
       "name": "Kirim Telegram Digest",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         480,
         760
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -680,10 +699,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -699,7 +714,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "f1000000-0000-0000-0000-000000000002",
       "name": "Evaluasi Creavoo",
@@ -708,7 +725,13 @@
       "position": [
         -180,
         1000
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -717,10 +740,6 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
             {
               "name": "Content-Type",
               "value": "application/json"
@@ -737,7 +756,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "f1000000-0000-0000-0000-000000000003",
       "name": "Evaluasi Zaportfolio",
@@ -746,7 +767,13 @@
       "position": [
         40,
         1000
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -763,23 +790,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: $json.text }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
       },
       "id": "f1000000-0000-0000-0000-000000000005",
       "name": "Kirim Telegram Evaluasi",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         480,
         1000
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -830,23 +860,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Trigger render GAGAL — GitHub Actions tidak memberi runId. Cek koneksi GITHUB_TOKEN.\" }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"❌ [Creavoo] Trigger render GAGAL — GitHub Actions tidak memberi runId. Cek koneksi GITHUB_TOKEN.\" }}",
+        "additionalFields": {}
       },
       "id": "gcre00000-0000-0000-0000-000000000103",
       "name": "Notif Trigger Render Gagal Creavoo",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         1800,
         40
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -948,10 +981,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -967,7 +996,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "gcre00000-0000-0000-0000-000000000108",
       "name": "Panggil Complete Creavoo",
@@ -976,7 +1007,13 @@
       "position": [
         2900,
         -200
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -1014,23 +1051,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Creavoo] Render GAGAL di GitHub Actions!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"❌ [Creavoo] Render GAGAL di GitHub Actions!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId }}",
+        "additionalFields": {}
       },
       "id": "gcre00000-0000-0000-0000-000000000110",
       "name": "Notif Render Gagal Creavoo",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         3120,
         -20
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -1068,23 +1108,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"⏱️ [Creavoo] Render KELAMAAN (>2 jam), kemungkinan macet!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId + \"\\n\\nCek manual di GitHub Actions.\" }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"⏱️ [Creavoo] Render KELAMAAN (>2 jam), kemungkinan macet!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId + \"\\n\\nCek manual di GitHub Actions.\" }}",
+        "additionalFields": {}
       },
       "id": "gcre00000-0000-0000-0000-000000000112",
       "name": "Notif Timeout Creavoo",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         3120,
         160
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -1135,23 +1178,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Trigger render GAGAL — GitHub Actions tidak memberi runId. Cek koneksi GITHUB_TOKEN.\" }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"❌ [Zaportfolio] Trigger render GAGAL — GitHub Actions tidak memberi runId. Cek koneksi GITHUB_TOKEN.\" }}",
+        "additionalFields": {}
       },
       "id": "gzap00000-0000-0000-0000-000000000103",
       "name": "Notif Trigger Render Gagal Zaportfolio",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         1800,
         520
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -1253,10 +1299,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-internal-secret",
-              "value": "={{ $env.SCHEDULE_WEBHOOK_SECRET }}"
-            },
-            {
               "name": "Content-Type",
               "value": "application/json"
             }
@@ -1272,7 +1314,9 @@
               "neverError": true
             }
           }
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "gzap00000-0000-0000-0000-000000000108",
       "name": "Panggil Complete Zaportfolio",
@@ -1281,7 +1325,13 @@
       "position": [
         2900,
         280
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "internal-secret-header",
+          "name": "Video Factory — Internal Secret"
+        }
+      }
     },
     {
       "parameters": {
@@ -1319,23 +1369,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"❌ [Zaportfolio] Render GAGAL di GitHub Actions!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"❌ [Zaportfolio] Render GAGAL di GitHub Actions!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId }}",
+        "additionalFields": {}
       },
       "id": "gzap00000-0000-0000-0000-000000000110",
       "name": "Notif Render Gagal Zaportfolio",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         3120,
         460
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     },
     {
       "parameters": {
@@ -1373,23 +1426,26 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' }}",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $env.TELEGRAM_CHAT_ID, text: \"⏱️ [Zaportfolio] Render KELAMAAN (>2 jam), kemungkinan macet!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId + \"\\n\\nCek manual di GitHub Actions.\" }) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8145595315",
+        "text": "={{ \"⏱️ [Zaportfolio] Render KELAMAAN (>2 jam), kemungkinan macet!\\n\\ntitle : \" + $json.title + \"\\nrunId : \" + $json.runId + \"\\n\\nCek manual di GitHub Actions.\" }}",
+        "additionalFields": {}
       },
       "id": "gzap00000-0000-0000-0000-000000000112",
       "name": "Notif Timeout Zaportfolio",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
         3120,
         640
-      ]
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "video-factory-bot",
+          "name": "Video Factory — Telegram Bot"
+        }
+      }
     }
   ],
   "connections": {
